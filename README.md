@@ -1,7 +1,7 @@
 MigratorWordpress
 =================
 
-##A ProcessMigrator subclass for migrating wordpress export files to Processwire.
+#####A ProcessMigrator subclass for migrating wordpress export files to Processwire.
 
 As mentioned in the description this [ProcessWire](https://github.com/ryancramerdesign/ProcessWire) module is a submodule for ["ProcessMigrator"](). It allows to import the Wordpress Export file.
 
