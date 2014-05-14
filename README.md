@@ -9,10 +9,7 @@ As mentioned in the description this [ProcessWire](https://github.com/ryancramer
 
 It's really easy thanks to their build-in exporter.
 
-1. Go to "Tools -> Export".
-
-![](http://codex.wordpress.org/images/thumb/9/9b/manageexport.png/800px-manageexport.png)
-
+1. Go to "Tools -> Export". ![](http://codex.wordpress.org/images/thumb/9/9b/manageexport.png/800px-manageexport.png)
 2. Follow the steps.
 
 
