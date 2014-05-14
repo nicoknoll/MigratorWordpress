@@ -5,7 +5,7 @@ MigratorWordpress
 
 As mentioned in the description this [ProcessWire](https://github.com/ryancramerdesign/ProcessWire) module is a submodule for ["ProcessMigrator"](https://github.com/adrianbj/ProcessMigrator). It allows to import the Wordpress Export file.
 
-###How to export Wordpress
+##How to export Wordpress
 
 It's really easy thanks to their build-in exporter.
 
@@ -14,7 +14,7 @@ It's really easy thanks to their build-in exporter.
 
 
 
-###How to import into Processwire
+##How to import into Processwire
 
 1. Install "ProcessMigrator" and this module (if you haven't already done).
 2. Go to "Setup" -> "Migrator".
