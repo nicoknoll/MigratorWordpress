@@ -1,0 +1,1075 @@
+<?php
+
+set_time_limit(10000);
+
+
+// Abstraction Class
+require_once(dirname(__DIR__) . '/ProcessMigrator/MigratorAbstract.php');
+
+
+
+/**
+ * WordPress Importer class for managing parsing of WXR files.
+ */
+class MigratorWordpress extends MigratorAbstract implements Module {
+
+  /**
+   * getModuleInfo is a module required by all modules to tell ProcessWire about them
+   *
+   * @return array
+   *
+   */
+    public static function getModuleInfo() {
+      return array(
+          'title' => 'Wordpress Migrator',
+          'version' => 1,
+          'summary' => 'Add new Import Wordpress XML option to Migrator',
+          'requires' => 'ProcessMigrator',
+          'filetype' => 'xml'
+          );
+    }
+
+
+
+      // define the mainly used vars
+      private $old, $new;
+
+
+    /* required by Migrator Abstract */
+
+
+    public function convertToJson($src) {
+
+      $this->migratorInit($src);
+
+      // adds data to the array
+      $this->addPages();
+      $this->addTemplates();
+      $this->addFields();
+
+      // converts the array to json
+      return json_encode($this->getNew());
+
+    }
+
+
+
+
+    private function migratorInit($xml) {
+        // parse the xml file
+        $parsed = $this->WXRparse($xml);
+
+        // fill the private vars
+        $this->old['users']        = $parsed['authors'];
+        $this->old['pages']        = $this->sortByPostType($parsed['posts']);
+        $this->old['categories']   = $parsed['categories'];
+        $this->old['tags']         = $parsed['tags'];
+    }
+
+
+
+
+
+
+    public function getNew() {
+        return $this->new;
+    }
+
+
+    // This function adds everything contained in the PW "page tree"
+    // ToDo: Comment support + custom field support
+    public function addPages() {
+
+        // --- TAGS ---
+
+        // create the parent page
+        $parent = array(
+            'name' => 'tags',
+            'parent_name' => '',
+            'page_template' => 'tags',
+            'status' => 1,
+            'sort' => 4,
+            'sortfield' => 'title',
+            'data' => array(
+                'title' => 'Tags'
+            )
+        );
+
+        // add the parent to the "pages" part of the (later) json tree
+        $this->new['pages'][] = $parent;
+
+
+        // add the categories
+        $tags = $this->old['tags'];
+        foreach($tags as $tag) {
+            $this->new['pages'][] = $this->convertTag($tag);
+        }
+
+
+
+        // --- CATEGORIES ---
+
+        // create the parent page
+        $parent = array(
+            'name' => 'categories',
+            'parent_name' => '',
+            'page_template' => 'categories',
+            'status' => 1,
+            'sort' => 3,
+            'sortfield' => 'title',
+            'data' => array(
+                'title' => 'Categories'
+            )
+        );
+
+        // add the parent to the "pages" part of the (later) json tree
+        $this->new['pages'][] = $parent;
+
+
+        // add the categories
+        $categories = $this->old['categories'];
+        foreach($categories as $category) {
+            $this->new['pages'][] = $this->convertCategory($category);
+        }
+
+
+
+        // --- POSTS ---
+
+        // create the parent page
+        $parent = array(
+            'name' => 'posts',
+            'parent_name' => '',
+            'page_template' => 'posts',
+            'status' => 1025,
+            'sort' => 2,
+            'sortfield' => '-created',
+            'data' => array(
+                'title' => 'Blog Posts',
+                'headline' => ''
+            )
+        );
+
+        // add the parent to the "pages" part of the (later) json tree
+        $this->new['pages'][] = $parent;
+
+
+        // First step is to add all the "real" posts to the array
+        $posts = $this->old['pages']['post'];
+        foreach($posts as $post) {
+            if($post['post_name'] == '') continue;
+            $pwPost = $this->convertPost($post);
+
+            if($pwPost['status'] == '8192') continue; // when trashed
+            $this->new['pages'][] = $pwPost;
+        }
+
+
+
+        // --- PAGES ---
+
+        // add the pages
+        $pages = $this->old['pages']['page'];
+        foreach($pages as $page) {
+            if($page['post_name'] == '') continue;
+            $pwPast = $this->convertPage($page);
+
+            if($pwPast['status'] == '8192') continue; // when trashed
+            $this->new['pages'][] = $pwPast;
+        }
+
+
+        // return everything just in case
+        return $this->new['pages'];
+
+    }
+
+
+
+
+    // This function adds the needed templates
+    public function addTemplates() {
+
+        // create blog-page template
+        $tplPage = $this->createTemplate('blog-page', array(
+            'label' => 'Basic Blog Page'
+        ));
+
+        // add to array
+        $this->new['templates'][] = $tplPage;
+
+
+
+        // create posts template
+        $tplPosts = $this->createTemplate('posts', array(
+            'noParents'         => 1,
+            'childTemplates'    => array('post'),
+            'allowPageNum'      => 1,
+            'urlSegments'       => 1,
+            'label'             => 'Blog Posts'
+        ));
+
+        // add to array
+        $this->new['templates'][] = $tplPosts;
+
+
+
+        // create post template
+        $tplPost = $this->createTemplate('post', array(
+            'noChildren' => 1,
+            'parentTemplates' => array('posts'),
+            'allowChangeUser' => 1,
+            'pageLabelField' => 'title',
+            'label' => 'Blog Post'
+        ));
+
+        // add to array
+        $this->new['templates'][] = $tplPost;
+
+
+
+        // create categories template
+        $tplCategories = $this->createTemplate('categories', array(
+            'noParents' => 1,
+            'childTemplates' => array('category'),
+            'label' => 'Categories (List)'
+        ));
+
+        // add to array
+        $this->new['templates'][] = $tplCategories;
+
+
+
+        // create category template
+        $tplCategory = $this->createTemplate('category', array(
+            'noChildren' => 1,
+            'parentTemplates' => array('categories'),
+            'allowPageNum' => 1,
+            'urlSegments' => 1,
+            'label' => 'Category'
+        ));
+
+        // add to array
+        $this->new['templates'][] = $tplCategory;
+
+
+
+        // create tags template
+        $tplTags = $this->createTemplate('tags', array(
+            'noParents' => 1,
+            'childTemplates' => array('tag'),
+            'label' => 'Tags'
+        ));
+
+        // add to array
+        $this->new['templates'][] = $tplTags;
+
+
+
+        // create tag template
+        $tplTag = $this->createTemplate('tag', array(
+            'noChildren' => 1,
+            'parentTemplates' => array('tags'),
+            'label' => 'Tag'
+        ));
+
+        // add to array
+        $this->new['templates'][] = $tplTag;
+
+
+
+        // returning the array just in case
+        return $this->new['templates'];
+    }
+
+
+
+
+    // This function fills a template prototype with data
+    private function createTemplate($name, $data = array()) {
+        // template array prototype
+        $return = array(
+            'template' => $name,
+            'data' => array(
+                'useRoles'              => 0,
+                'childrenTemplatesID'   => 0,
+                'sortfield'             => '',
+                'noChildren'            => '',
+                'noParents'             => 0,
+                'childTemplates'        => array(),
+                'parentTemplates'       => array(),
+                'allowPageNum'          => 0,
+                'allowChangeUser'       => 0,
+                'redirectLogin'         => 0,
+                'urlSegments'           => 0,
+                'https'                 => 0,
+                'slashUrls'             => 1,
+                'altFilename'           => '',
+                'guestSearchable'       => 0,
+                'pageClass'             => '',
+                'pageLabelField'        => '',
+                'noGlobal'              => 0,
+                'noMove'                => 0,
+                'noTrash'               => 0,
+                'noSettings'            => 0,
+                'noChangeTemplate'      => 0,
+                'noShortcut'            => 0,
+                'noUnpublish'           => 0,
+                'nameContentTab'        => 0,
+                'noCacheGetVars'        => '',
+                'noCachePostVars'       => '',
+                'useCacheForUsers'      => 0,
+                'cacheExpire'           => 0,
+                'cacheExpirePages'      => array(),
+                'label'                 => '',
+                'tags'                  => ''
+            )
+        );
+
+        // merge prototype with given data
+        $return['data'] = array_merge($return['data'], $data);
+
+        // return the template array
+        return $return;
+    }
+
+
+    public function addFields() {
+
+        // The fields needed for "posts" template
+
+        $this->new['fields'][] = array(
+            'name' => 'headline',
+            'label' => 'Headline',
+            'description' => null,
+            'template' => 'posts',
+            'flags' => 0,
+            'type' => 'FieldtypeText',
+            'data' => array(
+                'textformatters' => array(
+                    'TextformatterEntities'
+                ),
+                'collapsed' => 2,
+                'size' => 0,
+                'maxlength' => 1024
+            )
+        );
+
+
+
+        // The fields needed for "blog-page" template
+
+        $this->new['fields'][] = array(
+            'name' => 'headline',
+            'label' => 'Headline',
+            'description' => null,
+            'template' => 'blog-page',
+            'flags' => 0,
+            'type' => 'FieldtypeText',
+            'data' => array(
+                'textformatters' => array(
+                    'TextformatterEntities'
+                ),
+                'collapsed' => 2,
+                'size' => 0,
+                'maxlength' => 1024
+            )
+        );
+
+
+        $this->new['fields'][] = array(
+            'name' => 'body',
+            'label' => 'Body',
+            'description' => null,
+            'template' => 'blog-page',
+            'flags' => 0,
+            'type' => 'FieldtypeTextarea',
+            'data' => array(
+                'inputfieldClass' => 'InputfieldTinyMCE',
+                'rows' => 10,
+                'theme_advanced_buttons1' => 'formatselect,|,bold,italic,|,bullist,numlist,|,link,unlink,|,image,|,codemagic,|,fullscreen',
+                'theme_advanced_blockformats' => 'p,h3,h4,h5,blockquote,pre',
+                'plugins' => 'inlinepopups,safari,media,paste,fullscreen,codemagic',
+                'valid_elements' => '@array(id|class),aarray(href|target|name),strong\/b,em\/i,br,imgarray(src|id|class|width|height|alt),ul,ol,li,parray(class),h2,h3,h4,h5,blockquote,-p,-tablearray(border=0|cellspacing|cellpadding|width|frame|rules|height|align|summary|bgcolor|background|bordercolor),-trarray(rowspan|width|height|align|valign|bgcolor|background|bordercolor),tbody,thead,tfoot,#tdarray(colspan|rowspan|width|height|align|valign|bgcolor|background|bordercolor|scope),#tharray(colspan|rowspan|width|height|align|valign|scope),code,pre',
+                'textformatters' => array(
+                    'TextformatterVideoEmbed'
+                )
+            )
+        );
+
+
+        $this->new['fields'][] = array(
+            'name' => 'images',
+            'label' => 'Images',
+            'description' => null,
+            'template' => 'blog-page',
+            'flags' => 0,
+            'type' => 'FieldtypeImage',
+            'data' => array(
+                'extensions' => 'gif jpg jpeg png',
+                'entityEncode' => 1,
+                'adminThumbs' => 1,
+                'inputfieldClass' => 'InputfieldImage',
+                'maxFiles' => 0,
+                'descriptionRows' => 1,
+                'collapsed' => 2,
+                'fileSchema' => 2
+            )
+        );
+
+
+
+
+        // The fields needed for "post" template
+
+        $this->new['fields'][] = array(
+            'name' => 'title',
+            'label' => 'Title',
+            'description' => null,
+            'template' => 'post',
+            'flags' => 13,
+            'type' => 'FieldtypePageTitle',
+            'data' => array(
+                'required' => 1,
+                'textformatters' => array(
+                    'TextformatterEntities'
+                ),
+                'size' => 0,
+                'maxlength' => 255
+            )
+        );
+
+
+        $this->new['fields'][] = array(
+            'name' => 'body',
+            'label' => 'Body',
+            'description' => null,
+            'template' => 'post',
+            'flags' => 0,
+            'type' => 'FieldtypeTextarea',
+            'data' => array(
+                'inputfieldClass' => 'InputfieldTinyMCE',
+                'rows' => 10,
+                'theme_advanced_buttons1' => 'formatselect,|,bold,italic,|,bullist,numlist,|,link,unlink,|,image,|,codemagic,|,fullscreen',
+                'theme_advanced_blockformats' => 'p,h3,h4,h5,blockquote,pre',
+                'plugins' => 'inlinepopups,safari,media,paste,fullscreen,codemagic',
+                'valid_elements' => '@array(id|class),aarray(href|target|name),strong\/b,em\/i,br,imgarray(src|id|class|width|height|alt),ul,ol,li,parray(class),h2,h3,h4,h5,blockquote,-p,-tablearray(border=0|cellspacing|cellpadding|width|frame|rules|height|align|summary|bgcolor|background|bordercolor),-trarray(rowspan|width|height|align|valign|bgcolor|background|bordercolor),tbody,thead,tfoot,#tdarray(colspan|rowspan|width|height|align|valign|bgcolor|background|bordercolor|scope),#tharray(colspan|rowspan|width|height|align|valign|scope),code,pre',
+                'textformatters' => array(
+                    'TextformatterVideoEmbed'
+                )
+            )
+        );
+
+
+        $this->new['fields'][] = array(
+            'name' => 'images',
+            'label' => 'Images',
+            'description' => null,
+            'template' => 'post',
+            'flags' => 0,
+            'type' => 'FieldtypeImage',
+            'data' => array(
+                'extensions' => 'gif jpg jpeg png',
+                'entityEncode' => 1,
+                'adminThumbs' => 1,
+                'inputfieldClass' => 'InputfieldImage',
+                'maxFiles' => 0,
+                'descriptionRows' => 1,
+                'collapsed' => 2,
+                'fileSchema' => 2
+            )
+        );
+
+
+        $this->new['fields'][] = array(
+            'name' => 'files',
+            'label' => 'Files',
+            'description' => null,
+            'template' => 'post',
+            'flags' => 0,
+            'type' => 'FieldtypeFile',
+            'data' => array(
+                'extensions' => 'pdf doc docx xls xlsx gif jpg jpeg png mp3 wav zip module css png jpg gif jpeg js',
+                'maxFiles' => 0,
+                'entityEncode' => 1,
+                'inputfieldClass' => 'InputfieldFile',
+                'descriptionRows' => 1,
+                'collapsed' => 2,
+                'fileSchema' => 2
+            )
+        );
+
+
+        $this->new['fields'][] = array(
+            'name' => 'categories',
+            'label' => 'Categories',
+            'description' => 'Select one or more categories below and drag to sort them in order of relevance. If you want a category that doesn\'t already exist, create a new one. ',
+            'template' => 'post',
+            'flags' => 0,
+            'type' => 'FieldtypePage',
+            'data' => array(
+                'derefAsPage' => 0,
+                'parent_id' => 'categories',
+                'template_id' => 'category',
+                'labelFieldName' => 'title',
+                'inputfield' => 'InputfieldAsmSelect',
+                'addable' => 1,
+                'description' => 'Select one or more categories below and drag to sort them in order of relevance. If you want a category that doesn\'t already exist, create a new one. '
+            )
+        );
+
+
+        $this->new['fields'][] = array(
+            'name' => 'tags',
+            'label' => 'Tags',
+            'description' => null,
+            'template' => 'post',
+            'flags' => 0,
+            'type' => 'FieldtypePage',
+            'data' => array(
+                'derefAsPage' => 0,
+                'parent_id' => 'tags',
+                'template_id' => 'tag',
+                'labelFieldName' => 'title',
+                'inputfield' => 'InputfieldPageAutocomplete',
+                'addable' => 1
+            )
+        );
+
+
+
+
+        // The fields needed for "category" template
+
+        $this->new['fields'][] = array(
+            'name' => 'body',
+            'label' => 'Body',
+            'description' => null,
+            'template' => 'category',
+            'flags' => 0,
+            'type' => 'FieldtypeTextarea',
+            'data' => array(
+                'inputfieldClass' => 'InputfieldTinyMCE',
+                'rows' => 10,
+                'theme_advanced_buttons1' => 'formatselect,|,bold,italic,|,bullist,numlist,|,link,unlink,|,image,|,codemagic,|,fullscreen',
+                'theme_advanced_blockformats' => 'p,h3,h4,h5,blockquote,pre',
+                'plugins' => 'inlinepopups,safari,media,paste,fullscreen,codemagic',
+                'valid_elements' => '@array(id|class),aarray(href|target|name),strong\/b,em\/i,br,imgarray(src|id|class|width|height|alt),ul,ol,li,parray(class),h2,h3,h4,h5,blockquote,-p,-tablearray(border=0|cellspacing|cellpadding|width|frame|rules|height|align|summary|bgcolor|background|bordercolor),-trarray(rowspan|width|height|align|valign|bgcolor|background|bordercolor),tbody,thead,tfoot,#tdarray(colspan|rowspan|width|height|align|valign|bgcolor|background|bordercolor|scope),#tharray(colspan|rowspan|width|height|align|valign|scope),code,pre',
+                'textformatters' => array(
+                    'TextformatterVideoEmbed'
+                )
+            )
+        );
+
+
+
+
+        // The fields needed for "tag" template
+
+        $this->new['fields'][] = array(
+            'name' => 'body',
+            'label' => 'Body',
+            'description' => null,
+            'template' => 'tag',
+            'flags' => 0,
+            'type' => 'FieldtypeTextarea',
+            'data' => array(
+                'inputfieldClass' => 'InputfieldTinyMCE',
+                'rows' => 10,
+                'theme_advanced_buttons1' => 'formatselect,|,bold,italic,|,bullist,numlist,|,link,unlink,|,image,|,codemagic,|,fullscreen',
+                'theme_advanced_blockformats' => 'p,h3,h4,h5,blockquote,pre',
+                'plugins' => 'inlinepopups,safari,media,paste,fullscreen,codemagic',
+                'valid_elements' => '@array(id|class),aarray(href|target|name),strong\/b,em\/i,br,imgarray(src|id|class|width|height|alt),ul,ol,li,parray(class),h2,h3,h4,h5,blockquote,-p,-tablearray(border=0|cellspacing|cellpadding|width|frame|rules|height|align|summary|bgcolor|background|bordercolor),-trarray(rowspan|width|height|align|valign|bgcolor|background|bordercolor),tbody,thead,tfoot,#tdarray(colspan|rowspan|width|height|align|valign|bgcolor|background|bordercolor|scope),#tharray(colspan|rowspan|width|height|align|valign|scope),code,pre',
+                'textformatters' => array(
+                    'TextformatterVideoEmbed'
+                )
+            )
+        );
+
+        // returning the array - you know why ;)
+        return $this->new['fields'];
+    }
+
+
+
+    /*
+
+        // Comment stuff
+
+        {
+        "name":"href",
+        "label":"Website URL",
+        "description":null,
+        "template":null,
+        "flags":1,
+        "type":"FieldtypeURL",
+        "data":{
+        "noRelative":0,
+        "addRoot":0,
+        "size":0,
+        "maxlength":1024
+        }
+        },
+
+        {
+        "name":"comments",
+        "label":"Comments",
+        "description":null,
+        "template":"post",
+        "flags":0,
+        "type":"FieldtypeComments",
+        "data":{
+        "moderate":2,
+        "deleteSpamDays":3,
+        "collapsed":2,
+        "schemaVersion":1
+        }
+        },
+
+        {
+        "name":"headline",
+        "label":"Headline",
+        "description":null,
+        "template":"comments",
+        "flags":0,
+        "type":"FieldtypeText",
+        "data":{
+        "textformatters":[
+        "TextformatterEntities"
+        ],
+        "collapsed":2,
+        "size":0,
+        "maxlength":1024
+        }
+        },
+        {
+        "name":"quantity",
+        "label":"Quantity of items to show",
+        "description":null,
+        "template":"comments",
+        "flags":1,
+        "type":"FieldtypeInteger"
+        },
+
+    */
+
+
+
+
+
+
+    /*
+     *  Converters
+     */
+
+
+    // This function converts a single wp post to a pw post
+    private function convertPost($post) {
+        // the main page settings prototype
+        $return = array(
+            'name'              => wire('sanitizer')->pageName($post['post_name']),
+            'parent_name'       => 'posts/',
+            'page_template'     => 'post',
+            'status'            => $this->getStatus($post['status']),
+            'sort'              => $post["menu_order"],
+            'sortfield'         => 'sort',
+            'created_users_id'  => $this->getUserWithRole($post["post_author"]),
+            'modified_users_id' => $this->getUserWithRole($post["post_author"]),
+            'created'           => strtotime($post["post_date_gmt"].' GMT'),
+            'modified'          => strtotime($post["post_date_gmt"].' GMT'),
+            'data'              => array()
+        );
+
+        // the pw-fields content
+        $return['data'] = array(
+            'title'             => $post['post_title'],
+            'body'              => $post['post_content'],
+            'images'            => array(),
+            'files'             => array(),
+            'categories'        => $this->getPostCategories($post),
+            'tags'              => $this->getPostTags($post),
+            'excerpt'           => $post["post_excerpt"],
+            'wpid'              => $post["post_id"]
+
+        );
+
+        return $return;
+
+    }
+
+
+
+    private function convertPage($page) {
+        // the main page settings prototype
+        $return = array(
+            'name'              => wire('sanitizer')->pageName($page['post_name']),
+            'parent_name'       => '',
+            'page_template'     => 'blog-page',
+            'status'            => $this->getStatus($page['status']),
+            'sort'              => $page["menu_order"],
+            'sortfield'         => 'sort',
+            'created_users_id'  => $this->getUserWithRole($page["post_author"]),
+            'modified_users_id' => $this->getUserWithRole($page["post_author"]),
+            'created'           => strtotime($page["post_date_gmt"].' GMT'),
+            'modified'          => strtotime($page["post_date_gmt"].' GMT'),
+            'data'              => array()
+        );
+
+        // the pw-fields content
+        $return['data'] = array(
+            'title'             => $page['post_title'],
+            'body'              => $page['post_content'],
+            'images'            => array(),
+            'files'             => array(),
+            'excerpt'           => $page["post_excerpt"],
+            'wpid'              => $page["post_id"]
+
+        );
+
+        return $return;
+
+    }
+
+
+
+    private function convertTag($tag) {
+        // the main page settings prototype
+        $return = array(
+            'name'              => wire('sanitizer')->pageName($tag['tag_slug']), // maybe tag_name
+            'parent_name'       => 'tags/',
+            'page_template'     => 'tag',
+            'status'            => 1,
+            'sort'              => 0,
+            'sortfield'         => 'sort',
+            'created'           => time(),
+            'modified'          => time(),
+            'data'              => array()
+        );
+
+        // the pw-fields content
+        $return['data'] = array(
+            'title'             => $tag['tag_name'],
+            'body'              => $tag['tag_description']
+        );
+
+        return $return;
+    }
+
+
+
+    // ToDo: Category parent
+    private function convertCategory($cat) {
+        // the main page settings prototype
+        $return = array(
+            'name'              => wire('sanitizer')->pageName($cat['category_nicename']),
+            'parent_name'       => 'categories/',
+            'page_template'     => 'category',
+            'status'            => 1,
+            'sort'              => 0,
+            'sortfield'         => 'sort',
+            'created'           => time(),
+            'modified'          => time(),
+            'data'              => array()
+        );
+
+        // the pw-fields content
+        $return['data'] = array(
+            'title'             => $cat['cat_name'],
+            'body'              => $cat['category_description']
+        );
+
+        return $return;
+    }
+
+
+
+
+
+    /*
+    *   Helpers
+    */
+
+
+    private function getUserWithRole($user) {
+        // if the user has a role - add it. Otherwise add the guest role
+        // Converts the user name to a sanitized format
+        return ((@$this->old['users'][$user]) ? wire('sanitizer')->pageName($user).':'.$this->old['users'][$user] : wire('sanitizer')->pageName($user).':guest');
+    }
+
+
+
+    private function sortByPostType(array $posts) {
+        // currently only attachment, post and page are valid post types (no support for custom types)
+
+        $sorted = array();
+
+        foreach($posts as $post) {
+            $sorted[$post['post_type']][] = $post;
+        }
+
+        return $sorted;
+    }
+
+
+
+    private function getPostCategories($post) {
+        $data = @$post['terms'];
+        $categories = array();
+
+        if($data) {
+            foreach($data as $term) {
+                if($term['domain'] == 'category') {
+                    $categories[] = $term['slug'];
+                }
+            }
+        }
+
+        return $categories;
+    }
+
+
+
+    private function getPostTags($post) {
+        $data = @$post['terms'];
+        $tags = array();
+
+        if($data) {
+            foreach($data as $term) {
+                if($term['domain'] == 'tag') {
+                    $tags[] = $term['slug'];
+                }
+            }
+        }
+
+        return $tags;
+    }
+
+
+
+    private function getStatus($wpStatus) {
+        // Published - Viewable by everyone.
+        if($wpStatus == 'published') return 1;
+
+        // Future - Scheduled to be published in a future date.
+        if($wpStatus == 'future') return 3073;
+
+        // Draft - Incomplete post viewable by anyone with proper user level.
+        if($wpStatus == 'draft') return 1025;
+
+        // Pending - Awaiting a user with the publish_posts capability (typically a user assigned the Editor role) to publish.
+        if($wpStatus == 'pending') return 1025;
+
+        // Private - Viewable only to WordPress users at Administrator level.
+        if($wpStatus == 'private') return 3073;
+
+        // Trash - Posts in the Trash are assigned the trash status.
+        if($wpStatus == 'trash') return false; // I don't need trashed pages to get imported
+
+        // Auto-Draft - Revisions that WordPress saves automatically while you are editing.
+        if($wpStatus == 'auto-draft') return 3073;
+
+        // Inherit - Used with a child post (such as Attachments and Revisions) to determine the actual status from the parent post.
+        if($wpStatus == 'inherit') return 1;
+
+
+        return false;
+    }
+
+
+
+
+    /**
+    * WordPress eXtended RSS file parser implementations
+    *
+    * @package WordPress
+    * @subpackage Importer
+    *
+    * shortened by Nico Knoll
+    */
+
+
+
+    function WXRparse( $file ) {
+      // Attempt to use proper XML parsers first
+      if ( extension_loaded( 'simplexml' ) ) {
+        $result = $this->WXRparseSimpleXML( $file );
+
+        return $result;
+      } else {
+          return false;
+      }
+    }
+
+
+      /**
+       * WXR Parser that makes use of the SimpleXML PHP extension.
+       */
+
+    function WXRparseSimpleXML( $file ) {
+      $authors = $posts = $categories = $tags = $terms = array();
+
+      $internal_errors = libxml_use_internal_errors(true);
+      $xml = simplexml_load_file( $file );
+      // halt if loading produces an error
+      if ( ! $xml )
+        return false;
+
+      $wxr_version = $xml->xpath('/rss/channel/wp:wxr_version');
+      if ( ! $wxr_version )
+        return false;
+
+      $wxr_version = (string) trim( $wxr_version[0] );
+      // confirm that we are dealing with the correct file format
+      if ( ! preg_match( '/^\d+\.\d+$/', $wxr_version ) )
+        return false;
+
+      $base_url = $xml->xpath('/rss/channel/wp:base_site_url');
+      $base_url = (string) trim( $base_url[0] );
+
+      $namespaces = $xml->getDocNamespaces();
+      if ( ! isset( $namespaces['wp'] ) )
+        $namespaces['wp'] = 'http://wordpress.org/export/1.1/';
+      if ( ! isset( $namespaces['excerpt'] ) )
+        $namespaces['excerpt'] = 'http://wordpress.org/export/1.1/excerpt/';
+
+      // grab authors
+      foreach ( $xml->xpath('/rss/channel/wp:author') as $author_arr ) {
+        $a = $author_arr->children( $namespaces['wp'] );
+        $login = (string) $a->author_login;
+        $authors[$login] = array(
+          'author_id' => (int) $a->author_id,
+          'author_login' => $login,
+          'author_email' => (string) $a->author_email,
+          'author_display_name' => (string) $a->author_display_name,
+          'author_first_name' => (string) $a->author_first_name,
+          'author_last_name' => (string) $a->author_last_name
+        );
+      }
+
+      // grab cats, tags and terms
+      foreach ( $xml->xpath('/rss/channel/wp:category') as $term_arr ) {
+        $t = $term_arr->children( $namespaces['wp'] );
+        $categories[] = array(
+          'term_id' => (int) $t->term_id,
+          'category_nicename' => (string) $t->category_nicename,
+          'category_parent' => (string) $t->category_parent,
+          'cat_name' => (string) $t->cat_name,
+          'category_description' => (string) $t->category_description
+        );
+      }
+
+      foreach ( $xml->xpath('/rss/channel/wp:tag') as $term_arr ) {
+        $t = $term_arr->children( $namespaces['wp'] );
+        $tags[] = array(
+          'term_id' => (int) $t->term_id,
+          'tag_slug' => (string) $t->tag_slug,
+          'tag_name' => (string) $t->tag_name,
+          'tag_description' => (string) $t->tag_description
+        );
+      }
+
+      foreach ( $xml->xpath('/rss/channel/wp:term') as $term_arr ) {
+        $t = $term_arr->children( $namespaces['wp'] );
+        $terms[] = array(
+          'term_id' => (int) $t->term_id,
+          'term_taxonomy' => (string) $t->term_taxonomy,
+          'slug' => (string) $t->term_slug,
+          'term_parent' => (string) $t->term_parent,
+          'term_name' => (string) $t->term_name,
+          'term_description' => (string) $t->term_description
+        );
+      }
+
+      // grab posts
+      foreach ( $xml->channel->item as $item ) {
+        $post = array(
+          'post_title' => (string) $item->title,
+          'guid' => (string) $item->guid,
+        );
+
+        $dc = $item->children( 'http://purl.org/dc/elements/1.1/' );
+        $post['post_author'] = (string) $dc->creator;
+
+        $content = $item->children( 'http://purl.org/rss/1.0/modules/content/' );
+        $excerpt = $item->children( $namespaces['excerpt'] );
+        $post['post_content'] = (string) $content->encoded;
+        $post['post_excerpt'] = (string) $excerpt->encoded;
+
+        $wp = $item->children( $namespaces['wp'] );
+        $post['post_id'] = (int) $wp->post_id;
+        $post['post_date'] = (string) $wp->post_date;
+        $post['post_date_gmt'] = (string) $wp->post_date_gmt;
+        $post['comment_status'] = (string) $wp->comment_status;
+        $post['ping_status'] = (string) $wp->ping_status;
+        $post['post_name'] = (string) $wp->post_name;
+        $post['status'] = (string) $wp->status;
+        $post['post_parent'] = (int) $wp->post_parent;
+        $post['menu_order'] = (int) $wp->menu_order;
+        $post['post_type'] = (string) $wp->post_type;
+        $post['post_password'] = (string) $wp->post_password;
+        $post['is_sticky'] = (int) $wp->is_sticky;
+
+        if ( isset($wp->attachment_url) )
+          $post['attachment_url'] = (string) $wp->attachment_url;
+
+        foreach ( $item->category as $c ) {
+          $att = $c->attributes();
+          if ( isset( $att['nicename'] ) )
+            $post['terms'][] = array(
+              'name' => (string) $c,
+              'slug' => (string) $att['nicename'],
+              'domain' => (string) $att['domain']
+            );
+        }
+
+        foreach ( $wp->postmeta as $meta ) {
+          $post['postmeta'][] = array(
+            'key' => (string) $meta->meta_key,
+            'value' => (string) $meta->meta_value
+          );
+        }
+
+        foreach ( $wp->comment as $comment ) {
+          $meta = array();
+          if ( isset( $comment->commentmeta ) ) {
+            foreach ( $comment->commentmeta as $m ) {
+              $meta[] = array(
+                'key' => (string) $m->meta_key,
+                'value' => (string) $m->meta_value
+              );
+            }
+          }
+
+          $post['comments'][] = array(
+            'comment_id' => (int) $comment->comment_id,
+            'comment_author' => (string) $comment->comment_author,
+            'comment_author_email' => (string) $comment->comment_author_email,
+            'comment_author_IP' => (string) $comment->comment_author_IP,
+            'comment_author_url' => (string) $comment->comment_author_url,
+            'comment_date' => (string) $comment->comment_date,
+            'comment_date_gmt' => (string) $comment->comment_date_gmt,
+            'comment_content' => (string) $comment->comment_content,
+            'comment_approved' => (string) $comment->comment_approved,
+            'comment_type' => (string) $comment->comment_type,
+            'comment_parent' => (string) $comment->comment_parent,
+            'comment_user_id' => (int) $comment->comment_user_id,
+            'commentmeta' => $meta,
+          );
+        }
+
+        $posts[] = $post;
+      }
+
+      return array(
+        'authors' => $authors,
+        'posts' => $posts,
+        'categories' => $categories,
+        'tags' => $tags,
+        'terms' => $terms,
+        'base_url' => $base_url,
+        'version' => $wxr_version
+      );
+    }
+
+
+}
