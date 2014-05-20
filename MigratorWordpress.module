@@ -823,7 +823,8 @@ class MigratorWordpress extends MigratorAbstract implements Module {
                     if($term['domain'] == 'category') {
                         $categories[$term['slug']] = array(
                             'category_nicename' => $term['slug'],
-                            'cat_name' => $term['name']
+                            'cat_name' => $term['name'],
+                            'category_description' => ''
                         );
                     }
                 }
@@ -846,7 +847,8 @@ class MigratorWordpress extends MigratorAbstract implements Module {
                     if($term['domain'] == 'post_tag') {
                         $tags[$term['slug']] = array(
                             'tag_slug' => $term['slug'],
-                            'tag_name' => $term['name']
+                            'tag_name' => $term['name'],
+                            'tag_description' => ''
                         );
                     }
                 }
@@ -1357,9 +1359,9 @@ class WXR_Parser_Regex {
     var $terms = array();
     var $base_url = '';
 
-    function WXR_Parser_Regex() {
+    /*function WXR_Parser_Regex() {
         $this->__construct();
-    }
+    }*/
 
     function __construct() {
         $this->has_gzip = is_callable( 'gzopen' );
