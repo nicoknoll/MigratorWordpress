@@ -48,7 +48,7 @@ class MigratorWordpress extends MigratorAbstract implements Module {
       $this->addFields();
 
       // converts the array to json
-      return json_encode($this->getNew());
+      //return json_encode($this->getNew());
 
     }
 
@@ -59,34 +59,34 @@ class MigratorWordpress extends MigratorAbstract implements Module {
         // parse the xml file
         $parser = new WXR_Parser;
         $parsed = $parser->parse($xml);
-        
+
         // fill the private vars
         $this->old['users']        = $parsed['authors'];
         $this->old['pages']        = $this->sortByPostType($parsed['posts']);
         $this->old['categories']   = $parsed['categories'];
         $this->old['tags']         = $parsed['tags'];
-        
+
         // F**K YOU wordpress
         // Because of recent changes we have to check if tags are ony included 
         // in the post (import 1.1 and newer) or excluded (older than import 1.1)
-        
+
         // get categories from posts and add them to the array
         if(empty($this->old['categories'])) {
             $this->old['categories'] = $this->getCategories();
         }
-        
+
         // get tags from posts and add them to the array
         if(empty($this->old['tags'])) {
             $this->old['tags'] = $this->getTags();
         }
-        
-        
+
+
     }
 
-    
-    
-    
-    
+
+
+
+
     // load 
 
 
@@ -686,7 +686,7 @@ class MigratorWordpress extends MigratorAbstract implements Module {
 
     // This function converts a single wp post to a pw post
     private function convertPost($post) {
-        // the main page settings prototype
+        // the main page settings prototype        
         $return = array(
             'name'              => wire('sanitizer')->pageName($post['post_name']),
             'parent_name'       => 'posts/',
@@ -704,7 +704,7 @@ class MigratorWordpress extends MigratorAbstract implements Module {
         // the pw-fields content
         $return['data'] = array(
             'title'             => $post['post_title'],
-            'body'              => $post['post_content'],
+            'body'              => $this->inlineCaption($post['post_content']),
             'images'            => array(),
             'files'             => array(),
             'categories'        => $this->getPostCategories($post),
@@ -739,7 +739,7 @@ class MigratorWordpress extends MigratorAbstract implements Module {
         // the pw-fields content
         $return['data'] = array(
             'title'             => $page['post_title'],
-            'body'              => $page['post_content'],
+            'body'              => $this->inlineCaption($page['post_content']),
             'images'            => array(),
             'files'             => array(),
             'excerpt'           => $page["post_excerpt"],
@@ -809,15 +809,15 @@ class MigratorWordpress extends MigratorAbstract implements Module {
     /*
     *   Helpers
     */
-    
-    
+
+
     // getting all categories because of recent changes
     private function getCategories() {
         $posts = $this->old['pages']['post'];
         $categories = array();
         foreach($posts as $post) {
             $data = @$post['terms'];
-            
+
             if($data) {
                 foreach($data as $term) {
                     if($term['domain'] == 'category') {
@@ -830,18 +830,18 @@ class MigratorWordpress extends MigratorAbstract implements Module {
                 }
             }
         }
-        
+
         return $categories;
     }
-    
-    
+
+
     // getting all tags because of recent changes
     private function getTags() {        
         $posts = $this->old['pages']['post'];
         $tags = array();
         foreach($posts as $post) {
             $data = @$post['terms'];
-            
+
             if($data) {
                 foreach($data as $term) {
                     if($term['domain'] == 'post_tag') {
@@ -854,21 +854,38 @@ class MigratorWordpress extends MigratorAbstract implements Module {
                 }
             }
         }
-        
+
         return $tags;
     }
-    
-    
-    
-    
-    
+
+
+
+
+
 
 
     private function getUserWithRole($user) {
         // if the user has a role - add it. Otherwise add the guest role
         // Converts the user name to a sanitized format
-        return ((@$this->old['users'][$user]) ? wire('sanitizer')->pageName($user).':'.$this->old['users'][$user] : wire('sanitizer')->pageName($user).':guest');
+
+        //return ((@$this->old['users'][$user]) ? wire('sanitizer')->pageName($user).':'.$this->old['users'][$user] : wire('sanitizer')->pageName($user).':guest');
+        return wire('sanitizer')->pageName($user).':guest|author';
     }
+
+
+
+    // Wordpress [caption] to title
+    private function inlineCaption($text) {
+        preg_match_all('%\[caption.*\]\<img(.*)>(.*)\[\/caption\]%Uis', $text, $matches, PREG_SET_ORDER);
+
+        foreach($matches as $match) {
+            $new = '<img title="'.trim($match[2]).'" '.$match[1].'>';
+            $text = str_replace($match[0], $new);
+        }
+
+        return $text;
+    }
+
 
 
 
@@ -921,8 +938,8 @@ class MigratorWordpress extends MigratorAbstract implements Module {
 
 
     private function getStatus($wpStatus) {
-        // Published - Viewable by everyone.
-        if($wpStatus == 'published') return 1;
+        // Publish - Viewable by everyone.
+        if($wpStatus == 'publish') return 1;
 
         // Future - Scheduled to be published in a future date.
         if($wpStatus == 'future') return 3073;
