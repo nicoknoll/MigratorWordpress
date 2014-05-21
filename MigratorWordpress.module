@@ -47,8 +47,10 @@ class MigratorWordpress extends MigratorAbstract implements Module {
       $this->addTemplates();
       $this->addFields();
 
+      //var_dump($this->fields->get('categories'));
+
       // converts the array to json
-      //return json_encode($this->getNew());
+      return json_encode($this->getNew());
 
     }
 
@@ -122,10 +124,11 @@ class MigratorWordpress extends MigratorAbstract implements Module {
 
         // add the categories
         $tags = $this->old['tags'];
-        foreach($tags as $tag) {
-            $this->new['pages'][] = $this->convertTag($tag);
+        if(count($tags) > 0) {
+            foreach($tags as $tag) {
+                $this->new['pages'][] = $this->convertTag($tag);
+            }
         }
-
 
 
         // --- CATEGORIES ---
@@ -149,10 +152,11 @@ class MigratorWordpress extends MigratorAbstract implements Module {
 
         // add the categories
         $categories = $this->old['categories'];
-        foreach($categories as $category) {
-            $this->new['pages'][] = $this->convertCategory($category);
+        if(count($categories) > 0) {
+            foreach($categories as $category) {
+                $this->new['pages'][] = $this->convertCategory($category);
+            }
         }
-
 
 
         // --- POSTS ---
@@ -177,28 +181,30 @@ class MigratorWordpress extends MigratorAbstract implements Module {
 
         // First step is to add all the "real" posts to the array
         $posts = $this->old['pages']['post'];
-        foreach($posts as $post) {
-            if($post['post_name'] == '') continue;
-            $pwPost = $this->convertPost($post);
+        if(count($posts) > 0) {
+            foreach($posts as $post) {
+                if($post['post_name'] == '') continue;
+                $pwPost = $this->convertPost($post);
 
-            if($pwPost['status'] == '8192') continue; // when trashed
-            $this->new['pages'][] = $pwPost;
+                if($pwPost['status'] == '8192') continue; // when trashed
+                $this->new['pages'][] = $pwPost;
+            }
         }
-
 
 
         // --- PAGES ---
 
         // add the pages
         $pages = $this->old['pages']['page'];
-        foreach($pages as $page) {
-            if($page['post_name'] == '') continue;
-            $pwPast = $this->convertPage($page);
+        if(count($pages) > 0) {
+            foreach($pages as $page) {
+                if($page['post_name'] == '') continue;
+                $pwPast = $this->convertPage($page);
 
-            if($pwPast['status'] == '8192') continue; // when trashed
-            $this->new['pages'][] = $pwPast;
+                if($pwPast['status'] == '8192') continue; // when trashed
+                $this->new['pages'][] = $pwPast;
+            }
         }
-
 
         // return everything just in case
         return $this->new['pages'];
@@ -877,10 +883,11 @@ class MigratorWordpress extends MigratorAbstract implements Module {
     // Wordpress [caption] to title
     private function inlineCaption($text) {
         preg_match_all('%\[caption.*\]\<img(.*)>(.*)\[\/caption\]%Uis', $text, $matches, PREG_SET_ORDER);
-
-        foreach($matches as $match) {
-            $new = '<img title="'.trim($match[2]).'" '.$match[1].'>';
-            $text = str_replace($match[0], $new);
+        if($matches) {
+            foreach($matches as $match) {
+                $new = '<img title="'.trim($match[2]).'" '.$match[1].'>';
+                $text = str_replace($match[0], $new, $text);
+            }
         }
 
         return $text;
