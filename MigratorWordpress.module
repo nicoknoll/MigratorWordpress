@@ -180,6 +180,7 @@ class MigratorWordpress extends MigratorAbstract implements Module {
 
 
         // First step is to add all the "real" posts to the array
+        if(!array_key_exists('post', $this->old['pages'])) $this->old['pages']['post'] = 0;
         $posts = $this->old['pages']['post'];
         if(count($posts) > 0) {
             foreach($posts as $post) {
@@ -195,6 +196,7 @@ class MigratorWordpress extends MigratorAbstract implements Module {
         // --- PAGES ---
 
         // add the pages
+        if(!array_key_exists('page', $this->old['pages'])) $this->old['pages']['page'] = 0;
         $pages = $this->old['pages']['page'];
         if(count($pages) > 0) {
             foreach($pages as $page) {
