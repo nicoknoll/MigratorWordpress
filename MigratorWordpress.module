@@ -859,7 +859,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
                 foreach($data as $term) {
                     if($term['domain'] == 'category') {
                         $categories[$term['slug']] = array(
-                            'category_nicename' => $term['slug'],
+                            'category_nicename' =>  $this->cleanPageName($term['slug']),
                             'cat_name' => $term['name'],
                             'category_description' => ''
                         );
@@ -883,7 +883,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
                 foreach($data as $term) {
                     if($term['domain'] == 'post_tag') {
                         $tags[$term['slug']] = array(
-                            'tag_slug' => $term['slug'],
+                            'tag_slug' =>  $this->cleanPageName($term['slug']),
                             'tag_name' => $term['name'],
                             'tag_description' => ''
                         );
@@ -911,8 +911,8 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
     
     
     private function markupBody($text) {
-        $text=$this->inlineCaption($text);
-        $text=autop($text);
+        $text = $this->inlineCaption($text);
+        $text = autop($text);
         
         return $text;
     }
@@ -920,11 +920,16 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
     
     // Wordpress [caption] to title
     private function inlineCaption($text) {
-        preg_match_all('%\[caption.*\]\<img(.*)>(.*)\[\/caption\]%Uis', $text, $matches, PREG_SET_ORDER);
+        preg_match_all('%\[caption.*\](.*)\[\/caption\]%Uis', $text, $matches, PREG_SET_ORDER);
+        
         if($matches) {
             foreach($matches as $match) {
-                $new = '<img title="'.trim($match[2]).'" '.$match[1].'>';
-                $text = str_replace($match[0], $new, $text);
+                $img = preg_match('%\<img(.*)\>%Uis', $match[1], $imgmatch);
+                
+                if($imgmatch) {
+                    $new = '<img title="'.trim(strip_tags($match[1])).'" '.$imgmatch[1].'>';
+                    $text = str_replace($imgmatch[0], $new, $text);
+                }
             }
         }
         
@@ -955,7 +960,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
         if($data) {
             foreach($data as $term) {
                 if($term['domain'] == 'category') {
-                    $categories[] = $term['slug'];
+                    $categories[] = $this->cleanPageName($term['slug']);
                 }
             }
         }
@@ -972,7 +977,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
         if($data) {
             foreach($data as $term) {
                 if($term['domain'] == 'post_tag') {
-                    $tags[] = $term['slug'];
+                    $tags[] = $this->cleanPageName($term['slug']);
                 }
             }
         }
@@ -1015,6 +1020,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
     private function cleanPageName($name) {
         $name = rawurldecode($name);
         $name = wire('sanitizer')->pageName($name);
+
         return $name;
     }
     
