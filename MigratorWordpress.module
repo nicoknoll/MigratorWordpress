@@ -33,11 +33,11 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
 
       // define the mainly used vars
       private $old, $new;
-      
-      
-      
+
+
+
       // default field and template names
-      
+
       private $default = array(
           'field' => array(
                 'title'      => 'title',
@@ -60,12 +60,12 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
                 'blog-page'  => 'blog-page'
           )
       );
-      
+
       private $customNames;
 
 
     /* required by Migrator Abstract */
-    
+
 
     public function convertToJson($src) {
       $this->migratorInit($src);
@@ -74,7 +74,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
       $this->addPages();
       $this->addTemplates();
       $this->addFields();
-      
+
       // converts the array to json
       return json_encode($this->getNew());
 
@@ -84,10 +84,10 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
 
 
     private function migratorInit($xml) {
-        
+
         $data = $this->modules->getModuleConfigData($this);
         $this->customNames = $this->populateDefault($data);
-        
+
         // parse the xml file
         $parser = new WXR_Parser;
         $parsed = $parser->parse($xml);
@@ -99,7 +99,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
         $this->old['tags']         = $parsed['tags'];
 
         // F**K YOU wordpress
-        // Because of recent changes we have to check if tags are ony included 
+        // Because of recent changes we have to check if tags are ony included
         // in the post (import 1.1 and newer) or excluded (older than import 1.1)
 
         // get categories from posts and add them to the array
@@ -119,7 +119,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
 
 
 
-    // load 
+    // load
 
 
     public function getNew() {
@@ -214,7 +214,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
             foreach($posts as $post) {
                 if($post['post_name'] == '') continue;
                 $pwPost = $this->convertPost($post);
-    
+
                 if($pwPost['status'] == '8192') continue; // when trashed
                 $this->new['pages'][] = $pwPost;
             }
@@ -226,12 +226,12 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
         // add the pages
         if(!array_key_exists('page', $this->old['pages'])) $this->old['pages']['page'] = '';
         $pages = $this->old['pages']['page'];
-        
+
         if($this->old['pages']['page'] != '') {
             foreach($pages as $page) {
                 if($page['post_name'] == '') continue;
                 $pwPast = $this->convertPage($page);
-    
+
                 if($pwPast['status'] == '8192') continue; // when trashed
                 $this->new['pages'][] = $pwPast;
             }
@@ -393,9 +393,9 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
 
 
     public function addFields() {
-        
-        
-        
+
+
+
         // The fields needed for "posts" template
 
         $this->new['fields'][] = array(
@@ -723,7 +723,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
 
     // This function converts a single wp post to a pw post
     private function convertPost($post) {
-        // the main page settings prototype        
+        // the main page settings prototype
         $return = array(
             'name'              => $this->cleanPageName($post['post_name']),
             'parent_name'       => 'posts/',
@@ -873,7 +873,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
 
 
     // getting all tags because of recent changes
-    private function getTags() {        
+    private function getTags() {
         $posts = $this->old['pages']['post'];
         $tags = array();
         foreach($posts as $post) {
@@ -908,34 +908,45 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
         //return ((@$this->old['users'][$user]) ? $this->cleanPageName($user).':'.$this->old['users'][$user] : $this->cleanPageName($user).':guest');
         return $this->cleanPageName($user).':guest|author';
     }
-    
-    
+
+
     private function markupBody($text) {
         $text = $this->inlineCaption($text);
         $text = autop($text);
-        
+
         return $text;
     }
 
-    
-    // Wordpress [caption] to title
-    private function inlineCaption($text) {
-        preg_match_all('%\[caption.*\](.*)\[\/caption\]%Uis', $text, $matches, PREG_SET_ORDER);
-        
-        if($matches) {
-            foreach($matches as $match) {
-                $img = preg_match('%\<img(.*)\>%Uis', $match[1], $imgmatch);
-                
-                if($imgmatch) {
-                    $new = '<img title="'.trim(strip_tags($match[1])).'" '.$imgmatch[1].'>';
-                    $text = str_replace($imgmatch[0], $new, $text);
-                }
-            }
-        }
-        
-        return $text;
+
+//Remove any exisiting title tags so we don't end up with two titles tags for an img
+private function remove_img_titles($text) {
+
+    $result = array();
+    preg_match_all('|title="[^"]*"|U', $text, $result);
+
+    foreach($result[0] as $img_tag) {
+        $text = str_replace($img_tag, '', $text);
     }
-    
+
+    return $text;
+}
+
+
+
+// Wordpress [caption] to title
+private function inlineCaption($text) {
+    $text = $this->remove_img_titles($text);
+    preg_match_all('%(\\[caption.*])(.*)\<img(.*)>(.*)(\\[/caption\\])%', $text, $matches, PREG_SET_ORDER);
+    if($matches) {
+        foreach($matches as $match) {
+            $new = $match[2] . '<img title="'.trim($match[4]).'" '.$match[3].'>';
+            $text = str_replace($match[0], $new, $text);
+        }
+    }
+
+    return $text;
+}
+
 
 
 
@@ -1015,20 +1026,20 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
 
         return false;
     }
-    
-    
+
+
     private function cleanPageName($name) {
         $name = rawurldecode($name);
         $name = wire('sanitizer')->pageName($name);
 
         return $name;
     }
-    
-    
+
+
     private function populateDefault($data) {
         $default = $this->default;
         $dataSplitted = array();
-                
+
         // split data
         foreach($data as $fieldKey => $fieldValue) {
             $splitKey = explode('_', $fieldKey, 2);
@@ -1037,14 +1048,14 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
         // overwrite old $data
         $data = $dataSplitted;
         unset($dataSplitted);
-        
+
         // populate
         foreach($default as $type => $childs) {
             foreach($childs as $child) {
                 $cData[$type][$child] = (($data[$type][$child] != '') ? $data[$type][$child] : $default[$type][$child]);
             }
         }
-        
+
         return $cData;
     }
 
@@ -1052,126 +1063,126 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
 
 
     // Config stuff
-    
-    public static function getModuleConfigInputfields(array $data) {     
-        $inputfields = new InputfieldWrapper(); 
-        
+
+    public static function getModuleConfigInputfields(array $data) {
+        $inputfields = new InputfieldWrapper();
+
         // Fields
         $fields = wire('modules')->get('InputfieldFieldset');
         $fields->label = 'Fields';
         $fields->description = 'If you already have created the needed field or want to use custom names for them you can adjust them here.';
         $fields->notes = 'Please don\'t change anything if you don\'t know what you\'re doing.';
-        
+
             $field = wire('modules')->get('InputfieldText');
             $field->name = 'field_title';
             $field->label = "title";
             $field->value = ((isset($data['field_title'])) ?  $data['field_title'] : 'title');
-            $fields->add($field); 
-        
-            $field = wire('modules')->get('InputfieldText'); 
+            $fields->add($field);
+
+            $field = wire('modules')->get('InputfieldText');
             $field->name = 'field_body';
             $field->label = 'body';
             $field->value = ((isset($data['field_body'])) ?  $data['field_body'] : 'body');
             $fields->add($field);
-            
-            $field = wire('modules')->get('InputfieldText'); 
+
+            $field = wire('modules')->get('InputfieldText');
             $field->name = 'field_headline';
             $field->label = 'headline';
             $field->value = ((isset($data['field_headline'])) ?  $data['field_headline'] : 'headline');
             $fields->add($field);
-            
-            $field = wire('modules')->get('InputfieldText'); 
+
+            $field = wire('modules')->get('InputfieldText');
             $field->name = 'field_images';
             $field->label = 'images';
             $field->value = ((isset($data['field_images'])) ?  $data['field_images'] : 'images');
             $fields->add($field);
-            
-            $field = wire('modules')->get('InputfieldText'); 
+
+            $field = wire('modules')->get('InputfieldText');
             $field->name = 'field_files';
             $field->label = 'files';
             $field->value = ((isset($data['field_files'])) ?  $data['field_files'] : 'files');
             $fields->add($field);
-            
-            $field = wire('modules')->get('InputfieldText'); 
+
+            $field = wire('modules')->get('InputfieldText');
             $field->name = 'field_categories';
             $field->label = 'categories';
             $field->value = ((isset($data['field_categories'])) ?  $data['field_categories'] : 'categories');
             $fields->add($field);
-            
-            $field = wire('modules')->get('InputfieldText'); 
+
+            $field = wire('modules')->get('InputfieldText');
             $field->name = 'field_tags';
             $field->label = 'tags';
             $field->value = ((isset($data['field_tags'])) ?  $data['field_tags'] : 'tags');
             $fields->add($field);
-            
-            $field = wire('modules')->get('InputfieldText'); 
+
+            $field = wire('modules')->get('InputfieldText');
             $field->name = 'field_excerpt';
             $field->label = 'excerpt';
             $field->value = ((isset($data['field_excerpt'])) ?  $data['field_excerpt'] : 'excerpt');
             $fields->add($field);
-            
-            $field = wire('modules')->get('InputfieldText'); 
+
+            $field = wire('modules')->get('InputfieldText');
             $field->name = 'field_wpid';
             $field->label = 'wpid';
             $field->value = ((isset($data['field_wpid'])) ?  $data['field_wpid'] : 'wpid');
             $fields->add($field);
-        
-        $inputfields->add($fields); 
-        
-        
+
+        $inputfields->add($fields);
+
+
         // templates
         $fields = wire('modules')->get('InputfieldFieldset');
         $fields->label = 'Templates';
         $fields->description = 'If you already have created the needed templates or want to use custom names for them you can adjust them here.';
         $fields->notes = 'Please don\'t change anything if you don\'t know what you\'re doing.';
-        
+
             $field = wire('modules')->get('InputfieldText');
             $field->name = 'template_tags';
             $field->label = 'tags';
             $field->value = ((isset($data['template_tags'])) ?  $data['template_tags'] : 'tags');
-            $fields->add($field); 
-        
-            $field = wire('modules')->get('InputfieldText'); 
+            $fields->add($field);
+
+            $field = wire('modules')->get('InputfieldText');
             $field->name = 'template_tag';
             $field->label = 'tag';
             $field->value = ((isset($data['template_tag'])) ?  $data['template_tag'] : 'tag');
             $fields->add($field);
-            
-            $field = wire('modules')->get('InputfieldText'); 
+
+            $field = wire('modules')->get('InputfieldText');
             $field->name = 'template_categories';
             $field->label = 'categories';
             $field->value = ((isset($data['template_categories'])) ?  $data['template_categories'] : 'categories');
             $fields->add($field);
-            
-            $field = wire('modules')->get('InputfieldText'); 
+
+            $field = wire('modules')->get('InputfieldText');
             $field->name = 'template_category';
             $field->label = 'category';
             $field->value = ((isset($data['template_category'])) ?  $data['template_category'] : 'category');
             $fields->add($field);
-            
-            $field = wire('modules')->get('InputfieldText'); 
+
+            $field = wire('modules')->get('InputfieldText');
             $field->name = 'template_posts';
             $field->label = 'posts';
             $field->value = ((isset($data['template_posts'])) ?  $data['template_posts'] : 'posts');
             $fields->add($field);
-            
-            $field = wire('modules')->get('InputfieldText'); 
+
+            $field = wire('modules')->get('InputfieldText');
             $field->name = 'template_post';
             $field->label = 'post';
             $field->value = ((isset($data['template_post'])) ?  $data['template_post'] : 'post');
             $fields->add($field);
-            
-            $field = wire('modules')->get('InputfieldText'); 
+
+            $field = wire('modules')->get('InputfieldText');
             $field->name = 'template_blog-page';
             $field->label = 'blog-page';
             $field->value = ((isset($data['template_blog-page'])) ?  $data['template_blog-page'] : 'blog-page');
             $fields->add($field);
-        
-        $inputfields->add($fields); 
-        
 
-    
-        return $inputfields; 
+        $inputfields->add($fields);
+
+
+
+        return $inputfields;
     }
 
 
