@@ -39,6 +39,9 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
       // default field and template names
 
       private $default = array(
+          'general' => array(
+                'convertshortcodes' => 0
+          ),
           'field' => array(
                 'title'      => 'title',
                 'body'       => 'body',
@@ -912,6 +915,10 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
 
     private function markupBody($text) {
         $text = $this->inlineCaption($text);
+        if(isset($this->customNames['general']['convertshortcodes']) && $this->customNames['general']['convertshortcodes']=='1') {
+            $replace = array('[' => '[[',']' => ']]');
+            $text = strtr($text, $replace);
+        }
         $text = autop($text);
 
         return $text;
@@ -1051,7 +1058,7 @@ private function inlineCaption($text) {
 
         // populate
         foreach($default as $type => $childs) {
-            foreach($childs as $child) {
+            foreach($childs as $child => $value) {
                 $cData[$type][$child] = (($data[$type][$child] != '') ? $data[$type][$child] : $default[$type][$child]);
             }
         }
@@ -1066,6 +1073,20 @@ private function inlineCaption($text) {
 
     public static function getModuleConfigInputfields(array $data) {
         $inputfields = new InputfieldWrapper();
+
+        // Config
+        $general = wire('modules')->get('InputfieldFieldset');
+        $general->label = 'General Config';
+        $general->description = '';
+
+            $field = wire('modules')->get("InputfieldCheckbox");
+            $field->name = 'general_convertshortcodes';
+            $field->label = 'Convert Shortcodes';
+            $field->description = "Check to have the import process convert WP single bracket [shortcode] format to match the default Hanna code double bracket [[shortcode]] format.";
+            $field->attr('checked', isset($data['general_convertshortcodes']) && $data['general_convertshortcodes']=='1' ? 'checked' : '' );
+            $general->add($field);
+
+        $inputfields->add($general);
 
         // Fields
         $fields = wire('modules')->get('InputfieldFieldset');
