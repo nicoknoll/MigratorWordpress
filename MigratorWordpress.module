@@ -501,6 +501,21 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
             )
         );
 
+        $this->new['fields'][] = array(
+            'name' => $this->customNames['field']['date'],
+            'label' => 'Date',
+            'description' => null,
+            'template' => $this->customNames['template']['post'],
+            'flags' => 0,
+            'type' => 'FieldtypeDatetime',
+            'data' => array(
+                'datepicker' => 0,
+                '_dateInputFormat' => 'Y-m-d',
+                '_timeInputFormat' => 'g:i a',
+                'dateInputFormat' => 'Y-m-d',
+                'timeInputFormat' => 'g:i a'
+            )
+        );
 
         $this->new['fields'][] = array(
             'name' => $this->customNames['field']['body'],
