@@ -198,7 +198,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
             'name' => 'posts',
             'parent_name' => '',
             'page_template' => $this->customNames['template']['posts'],
-            'status' => 1025,
+            'status' => 1,
             'sort' => 2,
             'sortfield' => '-created',
             'data' => array(
@@ -760,7 +760,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
         // the pw-fields content
         $return['data'] = array(
             $this->customNames['field']['title']             => $post['post_title'],
-            $this->customNames['field']['date']              => $post['post_date_gmt'],
+            $this->customNames['field']['date']              => strtotime($post["post_date_gmt"].' GMT'),
             $this->customNames['field']['body']              => $this->markupBody($post['post_content']),
             $this->customNames['field']['images']            => array(),
             $this->customNames['field']['files']             => array(),
@@ -796,7 +796,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
         // the pw-fields content
         $return['data'] = array(
             $this->customNames['field']['title']             => $page['post_title'],
-            $this->customNames['field']['date']              => $post['post_date_gmt'],
+            $this->customNames['field']['date']              => strtotime($page["post_date_gmt"].' GMT'),
             $this->customNames['field']['body']              => $this->markupBody($page['post_content']),
             $this->customNames['field']['images']            => array(),
             $this->customNames['field']['files']             => array(),
@@ -943,35 +943,34 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
     }
 
 
-//Remove any exisiting title tags so we don't end up with two titles tags for an img
-private function remove_img_titles($text) {
+    //Remove any exisiting title tags so we don't end up with two titles tags for an img
+    private function remove_img_titles($text) {
 
-    $result = array();
-    preg_match_all('|title="[^"]*"|U', $text, $result);
+        $result = array();
+        preg_match_all('|title="[^"]*"|U', $text, $result);
 
-    foreach($result[0] as $img_tag) {
-        $text = str_replace($img_tag, '', $text);
-    }
-
-    return $text;
-}
-
-
-
-// Wordpress [caption] to title
-private function inlineCaption($text) {
-    $text = $this->remove_img_titles($text);
-    preg_match_all('%(\\[caption.*])(.*)\<img(.*)>(.*)(\\[/caption\\])%', $text, $matches, PREG_SET_ORDER);
-    if($matches) {
-        foreach($matches as $match) {
-            $new = $match[2] . '<img title="'.trim($match[4]).'" '.$match[3].'>';
-            $text = str_replace($match[0], $new, $text);
+        foreach($result[0] as $img_tag) {
+            $text = str_replace($img_tag, '', $text);
         }
+
+        return $text;
     }
 
-    return $text;
-}
 
+
+    // Wordpress [caption] to title
+    private function inlineCaption($text) {
+        $text = $this->remove_img_titles($text);
+        preg_match_all('%(\\[caption.*])(.*)\<img(.*)>(.*)(\\[/caption\\])%', $text, $matches, PREG_SET_ORDER);
+        if($matches) {
+            foreach($matches as $match) {
+                $new = $match[2] . '<img title="'.trim($match[4]).'" '.$match[3].'>';
+                $text = str_replace($match[0], $new, $text);
+            }
+        }
+
+        return $text;
+    }
 
 
 
@@ -1055,7 +1054,7 @@ private function inlineCaption($text) {
 
     private function cleanPageName($name) {
         $name = rawurldecode($name);
-        $name = wire('sanitizer')->pageName($name);
+        $name = wire('sanitizer')->pageName($name, true);
 
         return $name;
     }
