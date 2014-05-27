@@ -1054,7 +1054,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
 
     private function cleanPageName($name) {
         $name = rawurldecode($name);
-        $name = wire('sanitizer')->pageName($name);
+        $name = wire('sanitizer')->pageName($name, true);
 
         return $name;
     }
