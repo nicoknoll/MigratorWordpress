@@ -198,7 +198,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
             'name' => 'posts',
             'parent_name' => '',
             'page_template' => $this->customNames['template']['posts'],
-            'status' => 1025,
+            'status' => 1,
             'sort' => 2,
             'sortfield' => '-created',
             'data' => array(
