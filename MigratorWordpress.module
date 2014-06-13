@@ -25,7 +25,8 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
           'version' => 1.3,
           'summary' => 'Add new Import Wordpress XML option to Migrator.',
           'requires' => 'ProcessMigrator',
-          'filetype' => 'xml'
+          'filetype' => 'xml',
+          'icon'     => 'wordpress'
           );
     }
 
