@@ -81,7 +81,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
       $this->addFields();
 
       // converts the array to json
-      return json_encode($this->getNew());
+      return mb_convert_encoding(json_encode($this->getNew(), JSON_UNESCAPED_UNICODE), "HTML-ENTITIES", 'UTF-8');
 
     }
 
@@ -449,13 +449,28 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
             'template' => $this->customNames['template']['blog-page'],
             'flags' => 0,
             'type' => 'FieldtypeTextarea',
-            'data' => array(
-                'inputfieldClass' => 'InputfieldTinyMCE',
-                'rows' => 10,
-                'theme_advanced_buttons1' => 'formatselect,|,bold,italic,|,bullist,numlist,|,link,unlink,|,image,|,codemagic,|,fullscreen',
-                'theme_advanced_blockformats' => '@[id|class],a[href|target|name],strong/b,em/i,br,img[src|id|class|width|height|alt],ul,ol,li,p[class],h2,h3,h4,blockquote,-p,-table[border=0|cellspacing|cellpadding|width|frame|rules|height|align|summary|bgcolor|background|bordercolor],-tr[rowspan|width|height|align|valign|bgcolor|background|bordercolor],tbody,thead,tfoot,#td[colspan|rowspan|width|height|align|valign|bgcolor|background|bordercolor|scope],#th[colspan|rowspan|width|height|align|valign|scope],code,pre',
-                'textformatters' => array(
-                    'TextformatterVideoEmbed'
+            "data" => array(
+                "qtyMin" => 1,
+                "qtyMax" => 10,
+                "trashable" => 1,
+                "size" => 0,
+                "maxlength" => 2048,
+                "inputfieldConfigNames" => "rows,toolbar,inlineMode,useACF,usePurifier,toggles,formatTags,extraAllowedContent,contentsCss,contentsInlineCss,stylesSet,extraPlugins,plugin_sourcedialog,removePlugins",
+                "schemaClass" => "FieldtypeTextarea",
+                "inputfieldClass" => "InputfieldCKEditor",
+                "contentType" => 1,
+                "rows" => 5,
+                "toolbar" => "Format, Styles, -, Bold, Italic, -, RemoveFormat\r\nNumberedList, BulletedList, -, Blockquote\r\nPWLink, Unlink, Anchor\r\nPWImage, Table, HorizontalRule, SpecialChar\r\nPasteText, PasteFromWord\r\nScayt, -, Sourcedialog",
+                "inlineMode" => 0,
+                "useACF" => 1,
+                "usePurifier" => 1,
+                "toggles" => ["process","roles",null],
+                "formatTags" => "p;h1;h2;h3;h4;h5;h6;pre;address",
+                "extraPlugins" => ["pwimage","pwlink","sourcedialog"],
+                "removePlugins" => "image,magicline",
+                "sortable" => 1,
+                "textformatters" => array(
+                    "TextformatterVideoEmbed"
                 )
             )
         );
@@ -525,15 +540,28 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
             'template' => $this->customNames['template']['post'],
             'flags' => 0,
             'type' => 'FieldtypeTextarea',
-            'data' => array(
-                'inputfieldClass' => 'InputfieldTinyMCE',
-                'rows' => 10,
-                'theme_advanced_buttons1' => 'formatselect,|,bold,italic,|,bullist,numlist,|,link,unlink,|,image,|,codemagic,|,fullscreen',
-                'theme_advanced_blockformats' => 'p,h3,h4,h5,blockquote,pre',
-                'plugins' => 'inlinepopups,safari,media,paste,fullscreen,codemagic',
-                'valid_elements' => '@[id|class],a[href|target|name],strong/b,em/i,br,img[src|id|class|width|height|alt],ul,ol,li,p[class],h2,h3,h4,blockquote,-p,-table[border=0|cellspacing|cellpadding|width|frame|rules|height|align|summary|bgcolor|background|bordercolor],-tr[rowspan|width|height|align|valign|bgcolor|background|bordercolor],tbody,thead,tfoot,#td[colspan|rowspan|width|height|align|valign|bgcolor|background|bordercolor|scope],#th[colspan|rowspan|width|height|align|valign|scope],code,pre',
-                'textformatters' => array(
-                    'TextformatterVideoEmbed'
+            "data" => array(
+                "qtyMin" => 1,
+                "qtyMax" => 10,
+                "trashable" => 1,
+                "size" => 0,
+                "maxlength" => 2048,
+                "inputfieldConfigNames" => "rows,toolbar,inlineMode,useACF,usePurifier,toggles,formatTags,extraAllowedContent,contentsCss,contentsInlineCss,stylesSet,extraPlugins,plugin_sourcedialog,removePlugins",
+                "schemaClass" => "FieldtypeTextarea",
+                "inputfieldClass" => "InputfieldCKEditor",
+                "contentType" => 1,
+                "rows" => 5,
+                "toolbar" => "Format, Styles, -, Bold, Italic, -, RemoveFormat\r\nNumberedList, BulletedList, -, Blockquote\r\nPWLink, Unlink, Anchor\r\nPWImage, Table, HorizontalRule, SpecialChar\r\nPasteText, PasteFromWord\r\nScayt, -, Sourcedialog",
+                "inlineMode" => 0,
+                "useACF" => 1,
+                "usePurifier" => 1,
+                "toggles" => ["process","roles",null],
+                "formatTags" => "p;h1;h2;h3;h4;h5;h6;pre;address",
+                "extraPlugins" => ["pwimage","pwlink","sourcedialog"],
+                "removePlugins" => "image,magicline",
+                "sortable" => 1,
+                "textformatters" => array(
+                    "TextformatterVideoEmbed"
                 )
             )
         );
@@ -626,15 +654,28 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
             'template' => $this->customNames['template']['category'],
             'flags' => 0,
             'type' => 'FieldtypeTextarea',
-            'data' => array(
-                'inputfieldClass' => 'InputfieldTinyMCE',
-                'rows' => 10,
-                'theme_advanced_buttons1' => 'formatselect,|,bold,italic,|,bullist,numlist,|,link,unlink,|,image,|,codemagic,|,fullscreen',
-                'theme_advanced_blockformats' => 'p,h3,h4,h5,blockquote,pre',
-                'plugins' => 'inlinepopups,safari,media,paste,fullscreen,codemagic',
-                'valid_elements' => '@[id|class],a[href|target|name],strong/b,em/i,br,img[src|id|class|width|height|alt],ul,ol,li,p[class],h2,h3,h4,blockquote,-p,-table[border=0|cellspacing|cellpadding|width|frame|rules|height|align|summary|bgcolor|background|bordercolor],-tr[rowspan|width|height|align|valign|bgcolor|background|bordercolor],tbody,thead,tfoot,#td[colspan|rowspan|width|height|align|valign|bgcolor|background|bordercolor|scope],#th[colspan|rowspan|width|height|align|valign|scope],code,pre',
-                'textformatters' => array(
-                    'TextformatterVideoEmbed'
+            "data" => array(
+                "qtyMin" => 1,
+                "qtyMax" => 10,
+                "trashable" => 1,
+                "size" => 0,
+                "maxlength" => 2048,
+                "inputfieldConfigNames" => "rows,toolbar,inlineMode,useACF,usePurifier,toggles,formatTags,extraAllowedContent,contentsCss,contentsInlineCss,stylesSet,extraPlugins,plugin_sourcedialog,removePlugins",
+                "schemaClass" => "FieldtypeTextarea",
+                "inputfieldClass" => "InputfieldCKEditor",
+                "contentType" => 1,
+                "rows" => 5,
+                "toolbar" => "Format, Styles, -, Bold, Italic, -, RemoveFormat\r\nNumberedList, BulletedList, -, Blockquote\r\nPWLink, Unlink, Anchor\r\nPWImage, Table, HorizontalRule, SpecialChar\r\nPasteText, PasteFromWord\r\nScayt, -, Sourcedialog",
+                "inlineMode" => 0,
+                "useACF" => 1,
+                "usePurifier" => 1,
+                "toggles" => ["process","roles",null],
+                "formatTags" => "p;h1;h2;h3;h4;h5;h6;pre;address",
+                "extraPlugins" => ["pwimage","pwlink","sourcedialog"],
+                "removePlugins" => "image,magicline",
+                "sortable" => 1,
+                "textformatters" => array(
+                    "TextformatterVideoEmbed"
                 )
             )
         );
@@ -651,15 +692,28 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
             'template' => $this->customNames['template']['tag'],
             'flags' => 0,
             'type' => 'FieldtypeTextarea',
-            'data' => array(
-                'inputfieldClass' => 'InputfieldTinyMCE',
-                'rows' => 10,
-                'theme_advanced_buttons1' => 'formatselect,|,bold,italic,|,bullist,numlist,|,link,unlink,|,image,|,codemagic,|,fullscreen',
-                'theme_advanced_blockformats' => 'p,h3,h4,h5,blockquote,pre',
-                'plugins' => 'inlinepopups,safari,media,paste,fullscreen,codemagic',
-                'valid_elements' => '@[id|class],a[href|target|name],strong/b,em/i,br,img[src|id|class|width|height|alt],ul,ol,li,p[class],h2,h3,h4,blockquote,-p,-table[border=0|cellspacing|cellpadding|width|frame|rules|height|align|summary|bgcolor|background|bordercolor],-tr[rowspan|width|height|align|valign|bgcolor|background|bordercolor],tbody,thead,tfoot,#td[colspan|rowspan|width|height|align|valign|bgcolor|background|bordercolor|scope],#th[colspan|rowspan|width|height|align|valign|scope],code,pre',
-                'textformatters' => array(
-                    'TextformatterVideoEmbed'
+            "data" => array(
+                "qtyMin" => 1,
+                "qtyMax" => 10,
+                "trashable" => 1,
+                "size" => 0,
+                "maxlength" => 2048,
+                "inputfieldConfigNames" => "rows,toolbar,inlineMode,useACF,usePurifier,toggles,formatTags,extraAllowedContent,contentsCss,contentsInlineCss,stylesSet,extraPlugins,plugin_sourcedialog,removePlugins",
+                "schemaClass" => "FieldtypeTextarea",
+                "inputfieldClass" => "InputfieldCKEditor",
+                "contentType" => 1,
+                "rows" => 5,
+                "toolbar" => "Format, Styles, -, Bold, Italic, -, RemoveFormat\r\nNumberedList, BulletedList, -, Blockquote\r\nPWLink, Unlink, Anchor\r\nPWImage, Table, HorizontalRule, SpecialChar\r\nPasteText, PasteFromWord\r\nScayt, -, Sourcedialog",
+                "inlineMode" => 0,
+                "useACF" => 1,
+                "usePurifier" => 1,
+                "toggles" => ["process","roles",null],
+                "formatTags" => "p;h1;h2;h3;h4;h5;h6;pre;address",
+                "extraPlugins" => ["pwimage","pwlink","sourcedialog"],
+                "removePlugins" => "image,magicline",
+                "sortable" => 1,
+                "textformatters" => array(
+                    "TextformatterVideoEmbed"
                 )
             )
         );
