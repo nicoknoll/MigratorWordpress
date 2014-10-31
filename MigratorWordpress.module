@@ -22,7 +22,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
     public static function getModuleInfo() {
       return array(
           'title' => 'Wordpress Migrator',
-          'version' => 1.3,
+          'version' => 1.3.1,
           'summary' => 'Add new Import Wordpress XML option to Migrator.',
           'requires' => 'ProcessMigrator',
           'filetype' => 'xml',
@@ -73,16 +73,19 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
 
 
     public function convertToJson($src) {
-      $this->migratorInit($src);
+        $this->migratorInit($src);
 
-      // adds data to the array
-      $this->addPages();
-      $this->addTemplates();
-      $this->addFields();
+        // adds data to the array
+        $this->addPages();
+        $this->addTemplates();
+        $this->addFields();
 
-      // converts the array to json
-      return mb_convert_encoding(json_encode($this->getNew(), JSON_UNESCAPED_UNICODE), "HTML-ENTITIES", 'UTF-8');
-
+        // converts the array to json
+        //return mb_convert_encoding(json_encode($this->getNew(), JSON_UNESCAPED_UNICODE), "HTML-ENTITIES", 'UTF-8');
+        //return mb_convert_encoding(json_encode($this->getNew()), "HTML-ENTITIES", 'UTF-8');
+        return json_encode($this->getNew());
+        //return json_encode($this->getNew(), JSON_UNESCAPED_UNICODE);
+        //return mb_convert_encoding(json_encode($this->getNew(), JSON_UNESCAPED_UNICODE), 'UTF-8');
     }
 
 
