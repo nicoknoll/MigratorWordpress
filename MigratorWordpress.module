@@ -22,7 +22,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
     public static function getModuleInfo() {
       return array(
           'title' => 'Wordpress Migrator',
-          'version' => 1.4,
+          'version' => 1.5,
           'summary' => 'Add new Import Wordpress XML option to Migrator.',
           'requires' => 'ProcessMigrator',
           'filetype' => 'xml',
@@ -76,9 +76,12 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
         $this->migratorInit($src);
 
         // adds data to the array
+        $this->addSettings();
         $this->addPages();
         $this->addTemplates();
         $this->addFields();
+
+
 
         // converts the array to json
         //return mb_convert_encoding(json_encode($this->getNew(), JSON_UNESCAPED_UNICODE), "HTML-ENTITIES", 'UTF-8');
@@ -102,6 +105,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
 
         // fill the private vars
         $this->old['users']        = $parsed['authors'];
+        $this->old['base_url']     = $parsed['base_url'];
         $this->old['pages']        = $this->sortByPostType($parsed['posts']);
         $this->old['categories']   = $parsed['categories'];
         $this->old['tags']         = $parsed['tags'];
@@ -132,6 +136,12 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
 
     public function getNew() {
         return $this->new;
+    }
+
+
+    public function addSettings() {
+        $this->new['settings'][] = array("base_url" => $this->old['base_url']);
+        return $this->new['settings'];
     }
 
 
@@ -462,14 +472,14 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
                 "schemaClass" => "FieldtypeTextarea",
                 "inputfieldClass" => "InputfieldCKEditor",
                 "contentType" => 1,
+                "pageLinkAbstractor" => 2,
                 "rows" => 5,
                 "toolbar" => "Format, Styles, -, Bold, Italic, -, RemoveFormat\r\nNumberedList, BulletedList, -, Blockquote\r\nPWLink, Unlink, Anchor\r\nPWImage, Table, HorizontalRule, SpecialChar\r\nPasteText, PasteFromWord\r\nScayt, -, Sourcedialog",
                 "inlineMode" => 0,
                 "useACF" => 1,
                 "usePurifier" => 1,
-                "toggles" => ["process","roles",null],
                 "formatTags" => "p;h1;h2;h3;h4;h5;h6;pre;address",
-                "extraPlugins" => ["pwimage","pwlink","sourcedialog"],
+                "extraPlugins" => array("pwimage","pwlink","sourcedialog"),
                 "removePlugins" => "image,magicline",
                 "sortable" => 1,
                 "textformatters" => array(
@@ -553,14 +563,14 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
                 "schemaClass" => "FieldtypeTextarea",
                 "inputfieldClass" => "InputfieldCKEditor",
                 "contentType" => 1,
+                "pageLinkAbstractor" => 2,
                 "rows" => 5,
                 "toolbar" => "Format, Styles, -, Bold, Italic, -, RemoveFormat\r\nNumberedList, BulletedList, -, Blockquote\r\nPWLink, Unlink, Anchor\r\nPWImage, Table, HorizontalRule, SpecialChar\r\nPasteText, PasteFromWord\r\nScayt, -, Sourcedialog",
                 "inlineMode" => 0,
                 "useACF" => 1,
                 "usePurifier" => 1,
-                "toggles" => ["process","roles",null],
                 "formatTags" => "p;h1;h2;h3;h4;h5;h6;pre;address",
-                "extraPlugins" => ["pwimage","pwlink","sourcedialog"],
+                "extraPlugins" => array("pwimage","pwlink","sourcedialog"),
                 "removePlugins" => "image,magicline",
                 "sortable" => 1,
                 "textformatters" => array(
@@ -667,14 +677,14 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
                 "schemaClass" => "FieldtypeTextarea",
                 "inputfieldClass" => "InputfieldCKEditor",
                 "contentType" => 1,
+                "pageLinkAbstractor" => 2,
                 "rows" => 5,
                 "toolbar" => "Format, Styles, -, Bold, Italic, -, RemoveFormat\r\nNumberedList, BulletedList, -, Blockquote\r\nPWLink, Unlink, Anchor\r\nPWImage, Table, HorizontalRule, SpecialChar\r\nPasteText, PasteFromWord\r\nScayt, -, Sourcedialog",
                 "inlineMode" => 0,
                 "useACF" => 1,
                 "usePurifier" => 1,
-                "toggles" => ["process","roles",null],
                 "formatTags" => "p;h1;h2;h3;h4;h5;h6;pre;address",
-                "extraPlugins" => ["pwimage","pwlink","sourcedialog"],
+                "extraPlugins" => array("pwimage","pwlink","sourcedialog"),
                 "removePlugins" => "image,magicline",
                 "sortable" => 1,
                 "textformatters" => array(
@@ -705,14 +715,14 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
                 "schemaClass" => "FieldtypeTextarea",
                 "inputfieldClass" => "InputfieldCKEditor",
                 "contentType" => 1,
+                "pageLinkAbstractor" => 2,
                 "rows" => 5,
                 "toolbar" => "Format, Styles, -, Bold, Italic, -, RemoveFormat\r\nNumberedList, BulletedList, -, Blockquote\r\nPWLink, Unlink, Anchor\r\nPWImage, Table, HorizontalRule, SpecialChar\r\nPasteText, PasteFromWord\r\nScayt, -, Sourcedialog",
                 "inlineMode" => 0,
                 "useACF" => 1,
                 "usePurifier" => 1,
-                "toggles" => ["process","roles",null],
                 "formatTags" => "p;h1;h2;h3;h4;h5;h6;pre;address",
-                "extraPlugins" => ["pwimage","pwlink","sourcedialog"],
+                "extraPlugins" => array("pwimage","pwlink","sourcedialog"),
                 "removePlugins" => "image,magicline",
                 "sortable" => 1,
                 "textformatters" => array(
@@ -1134,7 +1144,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
         // populate
         foreach($default as $type => $childs) {
             foreach($childs as $child => $value) {
-                $cData[$type][$child] = (($data[$type][$child] != '') ? $data[$type][$child] : $default[$type][$child]);
+                $cData[$type][$child] = ((isset($data[$type][$child]) && $data[$type][$child] != '') ? $data[$type][$child] : $default[$type][$child]);
             }
         }
 
