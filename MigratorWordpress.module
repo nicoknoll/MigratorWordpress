@@ -22,7 +22,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
     public static function getModuleInfo() {
       return array(
           'title' => 'Wordpress Migrator',
-          'version' => 1.6,
+          'version' => 1.7,
           'summary' => 'Add new Import Wordpress XML option to Migrator.',
           'requires' => 'ProcessMigrator',
           'filetype' => 'xml',
@@ -1057,12 +1057,14 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
         preg_match_all('%\[caption.* align="(.*)(<img.*?\/?>).*?\[\/caption]%', $text, $matches, PREG_SET_ORDER);
         if($matches) {
             foreach($matches as $match) {
-                if(strstr($match[1], '"', true) == "alignleft") $align = "align_left";
-                if(strstr($match[1], '"', true) == "alignright") $align = "align_right";
-                if(strstr($match[1], '"', true) == "aligncenter") $align = "align_center";
-                $text = str_replace($match[2], str_replace('class="', 'class="'.$align.' ', $match[2]), $text);
+                $text = str_replace($match[2], str_replace('class="', 'class="'.strstr($match[1], '"', true).' ', $match[2]), $text);
             }
         }
+        //convert alignment classes from WP to default CkEditor classes in PW
+        $text = str_replace("alignleft", "align_left", $text);
+        $text = str_replace("alignright", "align_right", $text);
+        $text = str_replace("aligncenter", "align_right", $text);
+
         return $text;
     }
 
