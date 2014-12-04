@@ -140,7 +140,10 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
 
 
     public function addSettings() {
-        $this->new['settings'][] = array("base_url" => $this->old['base_url']);
+        $this->new['settings'][] = array(
+            "base_url" => $this->old['base_url'],
+            "thumb_suffix" => "-{width}x{height}"
+        );
         return $this->new['settings'];
     }
 
@@ -829,9 +832,9 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
         $return['data'] = array(
             $this->customNames['field']['title']             => $post['post_title'],
             $this->customNames['field']['date']              => strtotime($post["post_date_gmt"].' GMT'),
-            $this->customNames['field']['body']              => $this->markupBody($post['post_content']),
-            $this->customNames['field']['images']            => array(),
+            $this->customNames['field']['images']            => $this->extractImages($this->markupBody($post['post_content'])),
             $this->customNames['field']['files']             => array(),
+            $this->customNames['field']['body']              => $this->markupBody($post['post_content']),
             $this->customNames['field']['categories']        => $this->getPostCategories($post),
             $this->customNames['field']['tags']              => $this->getPostTags($post),
             $this->customNames['field']['excerpt']           => $post["post_excerpt"],
@@ -865,9 +868,9 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
         $return['data'] = array(
             $this->customNames['field']['title']             => $page['post_title'],
             $this->customNames['field']['date']              => strtotime($page["post_date_gmt"].' GMT'),
-            $this->customNames['field']['body']              => $this->markupBody($page['post_content']),
-            $this->customNames['field']['images']            => array(),
+            $this->customNames['field']['images']            => $this->extractImages($this->markupBody($post['post_content'])),
             $this->customNames['field']['files']             => array(),
+            $this->customNames['field']['body']              => $this->markupBody($page['post_content']),
             $this->customNames['field']['excerpt']           => $page["post_excerpt"],
             $this->customNames['field']['wpid']              => $page["post_id"]
 
@@ -1010,6 +1013,24 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
         return $text;
     }
 
+    private function extractImages($text) {
+
+        $imageArray = array();
+        if (strpos($text,'<img') === false) return $text; //return early if no images are embedded in html
+        $dom = new DOMDocument();
+        @$dom->loadHTML($text);
+        $imagesField = '';
+        foreach($dom->getElementsByTagName('img') as $img){
+            $imageObj = new stdClass();
+            $sizeStr = "-" . $img->getAttribute('width') . "x" . $img->getAttribute('height');
+            $imageObj->data = str_replace($sizeStr, "", $img->getAttribute('src'));
+            $imageObj->description = $img->getAttribute('title');
+            $imageArray[] = $imageObj;
+        }
+
+        return $imageArray;
+    }
+
 
     //Remove any exisiting title tags so we don't end up with two titles tags for an img
     private function remove_img_titles($text) {
@@ -1029,7 +1050,6 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
     // Wordpress [caption] to title
     function inlineCaption($text) {
         //caption text before caption close tag
-        //preg_match_all('%(\\[caption.*])(.*)\<img(.*)>(.*)(\\[/caption\\])%', $text, $matches, PREG_SET_ORDER);
         preg_match_all('%(\[caption.*])(.*)<img(.*)/>(.*)(\[/caption])%', $text, $matches, PREG_SET_ORDER);
         if($matches) {
             foreach($matches as $match) {
