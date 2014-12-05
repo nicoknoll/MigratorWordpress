@@ -22,7 +22,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
     public static function getModuleInfo() {
       return array(
           'title' => 'Wordpress Migrator',
-          'version' => 1.7,
+          'version' => 1.8,
           'summary' => 'Add new Import Wordpress XML option to Migrator.',
           'requires' => 'ProcessMigrator',
           'filetype' => 'xml',
