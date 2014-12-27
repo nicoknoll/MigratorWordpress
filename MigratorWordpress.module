@@ -22,7 +22,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
     public static function getModuleInfo() {
       return array(
           'title' => 'Wordpress Migrator',
-          'version' => 1.8,
+          'version' => 1.9,
           'summary' => 'Add new Import Wordpress XML option to Migrator.',
           'requires' => 'ProcessMigrator',
           'filetype' => 'xml',
@@ -868,7 +868,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
         $return['data'] = array(
             $this->customNames['field']['title']             => $page['post_title'],
             $this->customNames['field']['date']              => strtotime($page["post_date_gmt"].' GMT'),
-            $this->customNames['field']['images']            => $this->extractImages($this->markupBody($post['post_content'])),
+            $this->customNames['field']['images']            => $this->extractImages($this->markupBody($page['post_content'])),
             $this->customNames['field']['files']             => array(),
             $this->customNames['field']['body']              => $this->markupBody($page['post_content']),
             $this->customNames['field']['excerpt']           => $page["post_excerpt"],
@@ -1023,7 +1023,8 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
         foreach($dom->getElementsByTagName('img') as $img){
             $imageObj = new stdClass();
             $sizeStr = "-" . $img->getAttribute('width') . "x" . $img->getAttribute('height');
-            $imageObj->data = str_replace($sizeStr, "", $img->getAttribute('src'));
+            $fullsizePath = str_replace($sizeStr, "", $img->getAttribute('src'));
+            $imageObj->data = file_exists($fullsizePath) ? $fullsizePath : $img->getAttribute('src');
             $imageObj->description = $img->getAttribute('title');
             $imageArray[] = $imageObj;
         }
