@@ -13,60 +13,61 @@ require_once(dirname(__DIR__) . '/ProcessMigrator/MigratorAbstract.php');
  */
 class MigratorWordpress extends MigratorAbstract implements Module, ConfigurableModule {
 
-  /**
-   * getModuleInfo is a module required by all modules to tell ProcessWire about them
-   *
-   * @return array
-   *
-   */
+    /**
+     * getModuleInfo is a module required by all modules to tell ProcessWire about them
+     *
+     * @return array
+     *
+     */
     public static function getModuleInfo() {
-      return array(
-          'title' => 'Wordpress Migrator',
-          'version' => 1.9,
-          'summary' => 'Add new Import Wordpress XML option to Migrator.',
-          'requires' => 'ProcessMigrator',
-          'filetype' => 'xml',
-          'icon'     => 'wordpress'
-          );
+        return array(
+            'title' => 'Wordpress Migrator',
+            'version' => 2.0,
+            'summary' => 'Add new Import Wordpress XML option to Migrator.',
+            'requires' => 'ProcessMigrator',
+            'filetype' => 'xml',
+            'icon'     => 'wordpress'
+        );
     }
 
 
 
-      // define the mainly used vars
-      private $old, $new;
+    // define the mainly used vars
+    private $old, $new;
 
 
 
-      // default field and template names
+    // default field and template names
 
-      private $default = array(
-          'general' => array(
-                'convertshortcodes' => 0
-          ),
-          'field' => array(
-                'title'      => 'title',
-                'date'       => 'date',
-                'body'       => 'body',
-                'headline'   => 'headline',
-                'images'     => 'images',
-                'files'      => 'files',
-                'categories' => 'categories',
-                'tags'       => 'tags',
-                'excerpt'    => 'excerpt',
-                'wpid'       => 'wpid'
-          ),
-          'template' => array(
-                'tags'       => 'tags',
-                'tag'        => 'tag',
-                'categories' => 'categories',
-                'category'   => 'category',
-                'posts'      => 'posts',
-                'post'       => 'post',
-                'blog-page'  => 'blog-page'
-          )
-      );
+    private $default = array(
+        'general' => array(
+            'convertshortcodes' => 0
+        ),
+        'field' => array(
+            'title'      => 'title',
+            'date'       => 'date',
+            'body'       => 'body',
+            'headline'   => 'headline',
+            'images'     => 'images',
+            'files'      => 'files',
+            'categories' => 'categories',
+            'tags'       => 'tags',
+            'excerpt'    => 'excerpt',
+            'wpid'       => 'wpid',
+            'comments'   => 'comments'
+        ),
+        'template' => array(
+            'tags'       => 'tags',
+            'tag'        => 'tag',
+            'categories' => 'categories',
+            'category'   => 'category',
+            'posts'      => 'posts',
+            'post'       => 'post',
+            'blog-page'  => 'blog-page'
+        )
+    );
 
-      private $customNames;
+    private $customNames;
 
 
     /* required by Migrator Abstract */
@@ -95,8 +96,10 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
 
 
     private function migratorInit($xml) {
-
+        //Retrieve the Whole Configuration Data from the Class
         $data = $this->modules->getModuleConfigData($this);
+
+        //Dynamically set the Configs using setter's method
         $this->customNames = $this->populateDefault($data);
 
         // parse the xml file
@@ -107,8 +110,12 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
         $this->old['users']        = $parsed['authors'];
         $this->old['base_url']     = $parsed['base_url'];
         $this->old['pages']        = $this->sortByPostType($parsed['posts']);
+        /*Comments are in $parsed['post']['comments']*/
         $this->old['categories']   = $parsed['categories'];
         $this->old['tags']         = $parsed['tags'];
+
+
+
 
         // F**K YOU wordpress
         // Because of recent changes we have to check if tags are ony included
@@ -157,7 +164,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
         // create the parent page
         $parent = array(
             'name' => 'tags',
-            'parent_name' => '',
+            'parent_name' => '/',
             'page_template' => $this->customNames['template']['tags'],
             'status' => 1,
             'sort' => 4,
@@ -185,7 +192,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
         // create the parent page
         $parent = array(
             'name' => 'categories',
-            'parent_name' => '',
+            'parent_name' => '/',
             'page_template' => $this->customNames['template']['categories'],
             'status' => 1,
             'sort' => 3,
@@ -213,7 +220,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
         // create the parent page
         $parent = array(
             'name' => 'posts',
-            'parent_name' => '',
+            'parent_name' => '/',
             'page_template' => $this->customNames['template']['posts'],
             'status' => 1,
             'sort' => 2,
@@ -640,6 +647,23 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
             )
         );
 
+        //The fields needed for "comments" template
+
+        $this->new['fields'][]=array(
+            'name'=>$this->customNames['field']['comments'],
+            'label'=>'Comments',
+            'description'=>"Sets the Comments for the Website",
+            'template'=>$this->customNames['template']['post'],
+            'flags'=>0,
+            'type'=>'FieldtypeComments',
+            'data'=>array(
+               "moderate"=>2,
+                "deleteSpamDays"=>3,
+                "collapsed"=>2,
+                "schemaVersion"=>1
+            )
+        );
+
 
         $this->new['fields'][] = array(
             'name' => $this->customNames['field']['tags'],
@@ -742,7 +766,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
 
     /*
 
-        // Comment stuff
+        // Old comment stuff - delete once certain new stuff is working
 
         {
         "name":"href",
@@ -838,9 +862,11 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
             $this->customNames['field']['categories']        => $this->getPostCategories($post),
             $this->customNames['field']['tags']              => $this->getPostTags($post),
             $this->customNames['field']['excerpt']           => $post["post_excerpt"],
-            $this->customNames['field']['wpid']              => $post["post_id"]
+            $this->customNames['field']['wpid']              => $post["post_id"],
+            $this->customNames['field']['comments']          => (isset($post['comments']) ? $this->convertComments($post['comments']) : null )
+            );
 
-        );
+
 
         return $return;
 
@@ -852,7 +878,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
         // the main page settings prototype
         $return = array(
             'name'              => $this->cleanPageName($page['post_name']),
-            'parent_name'       => '',
+            'parent_name'       => '/',
             'page_template'     => $this->customNames['template']['blog-page'],
             'status'            => $this->getStatus($page['status']),
             'sort'              => $page["menu_order"],
@@ -906,6 +932,28 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
     }
 
 
+    private function convertComments($comments){
+        //All comments code thanks to Okeowo Aderemi
+
+        //We are expecting an array of comments
+        if(!is_array($comments)):
+            return null;
+        endif;
+        $pwComments=array();
+        foreach($comments as $key=>$commentValues){
+          $pwComments[]=array(
+                "id"=>$commentValues['comment_id'],
+                "status"=> Comment::statusPending,
+                "data"=> $commentValues['comment_content'],
+                "cite"=>$commentValues['comment_author'],
+                "email"=>$commentValues['comment_author_email'],
+                "ip"=>$commentValues['comment_author_IP'],
+                "website"=>$commentValues['comment_author_url'],
+                "parent_id"=>$commentValues['comment_parent'],
+          );
+        }
+        return $pwComments;
+    }
 
     // ToDo: Category parent
     private function convertCategory($cat) {
@@ -1016,7 +1064,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
     private function extractImages($text) {
 
         $imageArray = array();
-        if (strpos($text,'<img') === false) return $text; //return early if no images are embedded in html
+        if (strpos($text,'<img') === false) return $imageArray; //return early if no images are embedded in html
         $dom = new DOMDocument();
         @$dom->loadHTML($text);
         $imagesField = '';
@@ -1213,12 +1261,12 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
         $general->label = 'General Config';
         $general->description = '';
 
-            $field = wire('modules')->get("InputfieldCheckbox");
-            $field->name = 'general_convertshortcodes';
-            $field->label = 'Convert Shortcodes';
-            $field->description = "Check to have the import process convert WP single bracket [shortcode] format to match the default Hanna code double bracket [[shortcode]] format.";
-            $field->attr('checked', isset($data['general_convertshortcodes']) && $data['general_convertshortcodes']=='1' ? 'checked' : '' );
-            $general->add($field);
+        $field = wire('modules')->get("InputfieldCheckbox");
+        $field->name = 'general_convertshortcodes';
+        $field->label = 'Convert Shortcodes';
+        $field->description = "Check to have the import process convert WP single bracket [shortcode] format to match the default Hanna code double bracket [[shortcode]] format.";
+        $field->attr('checked', isset($data['general_convertshortcodes']) && $data['general_convertshortcodes']=='1' ? 'checked' : '' );
+        $general->add($field);
 
         $inputfields->add($general);
 
@@ -1228,65 +1276,72 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
         $fields->description = 'If you already have created the needed field or want to use custom names for them you can adjust them here.';
         $fields->notes = 'Please don\'t change anything if you don\'t know what you\'re doing.';
 
-            $field = wire('modules')->get('InputfieldText');
-            $field->name = 'field_title';
-            $field->label = "title";
-            $field->value = ((isset($data['field_title'])) ?  $data['field_title'] : 'title');
-            $fields->add($field);
+        $field = wire('modules')->get('InputfieldText');
+        $field->name = 'field_title';
+        $field->label = "title";
+        $field->value = ((isset($data['field_title'])) ?  $data['field_title'] : 'title');
+        $fields->add($field);
 
-            $field = wire('modules')->get('InputfieldText');
-            $field->name = 'field_date';
-            $field->label = 'date';
-            $field->value = ((isset($data['field_date'])) ?  $data['field_date'] : 'date');
-            $fields->add($field);
+        $field = wire('modules')->get('InputfieldText');
+        $field->name = 'field_date';
+        $field->label = 'date';
+        $field->value = ((isset($data['field_date'])) ?  $data['field_date'] : 'date');
+        $fields->add($field);
 
-            $field = wire('modules')->get('InputfieldText');
-            $field->name = 'field_body';
-            $field->label = 'body';
-            $field->value = ((isset($data['field_body'])) ?  $data['field_body'] : 'body');
-            $fields->add($field);
+        $field = wire('modules')->get('InputfieldText');
+        $field->name = 'field_body';
+        $field->label = 'body';
+        $field->value = ((isset($data['field_body'])) ?  $data['field_body'] : 'body');
+        $fields->add($field);
 
-            $field = wire('modules')->get('InputfieldText');
-            $field->name = 'field_headline';
-            $field->label = 'headline';
-            $field->value = ((isset($data['field_headline'])) ?  $data['field_headline'] : 'headline');
-            $fields->add($field);
+        $field = wire('modules')->get('InputfieldText');
+        $field->name = 'field_headline';
+        $field->label = 'headline';
+        $field->value = ((isset($data['field_headline'])) ?  $data['field_headline'] : 'headline');
+        $fields->add($field);
 
-            $field = wire('modules')->get('InputfieldText');
-            $field->name = 'field_images';
-            $field->label = 'images';
-            $field->value = ((isset($data['field_images'])) ?  $data['field_images'] : 'images');
-            $fields->add($field);
+        $field = wire('modules')->get('InputfieldText');
+        $field->name = 'field_images';
+        $field->label = 'images';
+        $field->value = ((isset($data['field_images'])) ?  $data['field_images'] : 'images');
+        $fields->add($field);
 
-            $field = wire('modules')->get('InputfieldText');
-            $field->name = 'field_files';
-            $field->label = 'files';
-            $field->value = ((isset($data['field_files'])) ?  $data['field_files'] : 'files');
-            $fields->add($field);
+        $field = wire('modules')->get('InputfieldText');
+        $field->name = 'field_files';
+        $field->label = 'files';
+        $field->value = ((isset($data['field_files'])) ?  $data['field_files'] : 'files');
+        $fields->add($field);
 
-            $field = wire('modules')->get('InputfieldText');
-            $field->name = 'field_categories';
-            $field->label = 'categories';
-            $field->value = ((isset($data['field_categories'])) ?  $data['field_categories'] : 'categories');
-            $fields->add($field);
+        //Comments
+        $field=wire('modules')->get('InputfieldText');
+        $field->name="field_comments";
+        $field->label="Comments";
+        $field->value=((isset($data['field_comments'])) ?  $data['field_comments'] : 'comments');
+        $fields->add($field);
 
-            $field = wire('modules')->get('InputfieldText');
-            $field->name = 'field_tags';
-            $field->label = 'tags';
-            $field->value = ((isset($data['field_tags'])) ?  $data['field_tags'] : 'tags');
-            $fields->add($field);
+        $field = wire('modules')->get('InputfieldText');
+        $field->name = 'field_categories';
+        $field->label = 'categories';
+        $field->value = ((isset($data['field_categories'])) ?  $data['field_categories'] : 'categories');
+        $fields->add($field);
 
-            $field = wire('modules')->get('InputfieldText');
-            $field->name = 'field_excerpt';
-            $field->label = 'excerpt';
-            $field->value = ((isset($data['field_excerpt'])) ?  $data['field_excerpt'] : 'excerpt');
-            $fields->add($field);
+        $field = wire('modules')->get('InputfieldText');
+        $field->name = 'field_tags';
+        $field->label = 'tags';
+        $field->value = ((isset($data['field_tags'])) ?  $data['field_tags'] : 'tags');
+        $fields->add($field);
 
-            $field = wire('modules')->get('InputfieldText');
-            $field->name = 'field_wpid';
-            $field->label = 'wpid';
-            $field->value = ((isset($data['field_wpid'])) ?  $data['field_wpid'] : 'wpid');
-            $fields->add($field);
+        $field = wire('modules')->get('InputfieldText');
+        $field->name = 'field_excerpt';
+        $field->label = 'excerpt';
+        $field->value = ((isset($data['field_excerpt'])) ?  $data['field_excerpt'] : 'excerpt');
+        $fields->add($field);
+
+        $field = wire('modules')->get('InputfieldText');
+        $field->name = 'field_wpid';
+        $field->label = 'wpid';
+        $field->value = ((isset($data['field_wpid'])) ?  $data['field_wpid'] : 'wpid');
+        $fields->add($field);
 
         $inputfields->add($fields);
 
@@ -1297,47 +1352,50 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
         $fields->description = 'If you already have created the needed templates or want to use custom names for them you can adjust them here.';
         $fields->notes = 'Please don\'t change anything if you don\'t know what you\'re doing.';
 
-            $field = wire('modules')->get('InputfieldText');
-            $field->name = 'template_tags';
-            $field->label = 'tags';
-            $field->value = ((isset($data['template_tags'])) ?  $data['template_tags'] : 'tags');
-            $fields->add($field);
+        $field = wire('modules')->get('InputfieldText');
+        $field->name = 'template_tags';
+        $field->label = 'tags';
+        $field->value = ((isset($data['template_tags'])) ?  $data['template_tags'] : 'tags');
+        $fields->add($field);
 
-            $field = wire('modules')->get('InputfieldText');
-            $field->name = 'template_tag';
-            $field->label = 'tag';
-            $field->value = ((isset($data['template_tag'])) ?  $data['template_tag'] : 'tag');
-            $fields->add($field);
+        $field = wire('modules')->get('InputfieldText');
+        $field->name = 'template_tag';
+        $field->label = 'tag';
+        $field->value = ((isset($data['template_tag'])) ?  $data['template_tag'] : 'tag');
+        $fields->add($field);
 
-            $field = wire('modules')->get('InputfieldText');
-            $field->name = 'template_categories';
-            $field->label = 'categories';
-            $field->value = ((isset($data['template_categories'])) ?  $data['template_categories'] : 'categories');
-            $fields->add($field);
+        $field = wire('modules')->get('InputfieldText');
+        $field->name = 'template_categories';
+        $field->label = 'categories';
+        $field->value = ((isset($data['template_categories'])) ?  $data['template_categories'] : 'categories');
+        $fields->add($field);
 
-            $field = wire('modules')->get('InputfieldText');
-            $field->name = 'template_category';
-            $field->label = 'category';
-            $field->value = ((isset($data['template_category'])) ?  $data['template_category'] : 'category');
-            $fields->add($field);
+        $field = wire('modules')->get('InputfieldText');
+        $field->name = 'template_category';
+        $field->label = 'category';
+        $field->value = ((isset($data['template_category'])) ?  $data['template_category'] : 'category');
+        $fields->add($field);
 
-            $field = wire('modules')->get('InputfieldText');
-            $field->name = 'template_posts';
-            $field->label = 'posts';
-            $field->value = ((isset($data['template_posts'])) ?  $data['template_posts'] : 'posts');
-            $fields->add($field);
+        $field = wire('modules')->get('InputfieldText');
+        $field->name = 'template_posts';
+        $field->label = 'posts';
+        $field->value = ((isset($data['template_posts'])) ?  $data['template_posts'] : 'posts');
+        $fields->add($field);
 
-            $field = wire('modules')->get('InputfieldText');
-            $field->name = 'template_post';
-            $field->label = 'post';
-            $field->value = ((isset($data['template_post'])) ?  $data['template_post'] : 'post');
-            $fields->add($field);
 
-            $field = wire('modules')->get('InputfieldText');
-            $field->name = 'template_blog-page';
-            $field->label = 'blog-page';
-            $field->value = ((isset($data['template_blog-page'])) ?  $data['template_blog-page'] : 'blog-page');
-            $fields->add($field);
+
+
+        $field = wire('modules')->get('InputfieldText');
+        $field->name = 'template_post';
+        $field->label = 'post';
+        $field->value = ((isset($data['template_post'])) ?  $data['template_post'] : 'post');
+        $fields->add($field);
+
+        $field = wire('modules')->get('InputfieldText');
+        $field->name = 'template_blog-page';
+        $field->label = 'blog-page';
+        $field->value = ((isset($data['template_blog-page'])) ?  $data['template_blog-page'] : 'blog-page');
+        $fields->add($field);
 
         $inputfields->add($fields);
 
@@ -1484,22 +1542,22 @@ class WXR_Parser {
             if ( $result != false )
                 return $result;
         }
-/*
-        // We have a malformed XML file, so display the error and fallthrough to regex
-        if ( isset($result) && defined('IMPORT_DEBUG') && IMPORT_DEBUG ) {
-            echo '<pre>';
-            if ( 'SimpleXML_parse_error' == $result->get_error_code() ) {
-                foreach  ( $result->get_error_data() as $error )
-                    echo $error->line . ':' . $error->column . ' ' . esc_html( $error->message ) . "\n";
-            } else if ( 'XML_parse_error' == $result->get_error_code() ) {
-                $error = $result->get_error_data();
-                echo $error[0] . ':' . $error[1] . ' ' . esc_html( $error[2] );
-            }
-            echo '</pre>';
-            echo '<p><strong>' . __( 'There was an error when reading this WXR file', 'wordpress-importer' ) . '</strong><br />';
-            echo __( 'Details are shown above. The importer will now try again with a different parser...', 'wordpress-importer' ) . '</p>';
-        }
-*/
+        /*
+                // We have a malformed XML file, so display the error and fallthrough to regex
+                if ( isset($result) && defined('IMPORT_DEBUG') && IMPORT_DEBUG ) {
+                    echo '<pre>';
+                    if ( 'SimpleXML_parse_error' == $result->get_error_code() ) {
+                        foreach  ( $result->get_error_data() as $error )
+                            echo $error->line . ':' . $error->column . ' ' . esc_html( $error->message ) . "\n";
+                    } else if ( 'XML_parse_error' == $result->get_error_code() ) {
+                        $error = $result->get_error_data();
+                        echo $error[0] . ':' . $error[1] . ' ' . esc_html( $error[2] );
+                    }
+                    echo '</pre>';
+                    echo '<p><strong>' . __( 'There was an error when reading this WXR file', 'wordpress-importer' ) . '</strong><br />';
+                    echo __( 'Details are shown above. The importer will now try again with a different parser...', 'wordpress-importer' ) . '</p>';
+                }
+        */
 
         // use regular expressions if nothing else available or this is bad XML
         $parser = new WXR_Parser_Regex;
@@ -1709,7 +1767,7 @@ class WXR_Parser_XML {
     );
     var $wp_sub_tags = array(
         'wp:comment_id', 'wp:comment_author', 'wp:comment_author_email', 'wp:comment_author_url',
-        'wp:comment_author_IP',	'wp:comment_date', 'wp:comment_date_gmt', 'wp:comment_content',
+        'wp:comment_author_IP', 'wp:comment_date', 'wp:comment_date_gmt', 'wp:comment_content',
         'wp:comment_approved', 'wp:comment_type', 'wp:comment_parent', 'wp:comment_user_id',
     );
 
@@ -1961,7 +2019,7 @@ class WXR_Parser_Regex {
         return array(
             'term_id' => $this->get_tag( $c, 'wp:term_id' ),
             'cat_name' => $this->get_tag( $c, 'wp:cat_name' ),
-            'category_nicename'	=> $this->get_tag( $c, 'wp:category_nicename' ),
+            'category_nicename' => $this->get_tag( $c, 'wp:category_nicename' ),
             'category_parent' => $this->get_tag( $c, 'wp:category_parent' ),
             'category_description' => $this->get_tag( $c, 'wp:category_description' ),
         );
