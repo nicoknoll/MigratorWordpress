@@ -22,7 +22,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
     public static function getModuleInfo() {
         return array(
             'title' => 'Wordpress Migrator',
-            'version' => 2.0,
+            'version' => 2.1,
             'summary' => 'Add new Import Wordpress XML option to Migrator.',
             'requires' => 'ProcessMigrator',
             'filetype' => 'xml',
@@ -943,7 +943,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
         foreach($comments as $key=>$commentValues){
           $pwComments[]=array(
                 "id"=>$commentValues['comment_id'],
-                "status"=> Comment::statusPending,
+                "status"=> $commentValues['comment_approved'],
                 "data"=> $commentValues['comment_content'],
                 "cite"=>$commentValues['comment_author'],
                 "email"=>$commentValues['comment_author_email'],
