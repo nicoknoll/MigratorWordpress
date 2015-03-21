@@ -933,6 +933,8 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
 
 
     private function convertComments($comments){
+        // Include Comments class (just to be sure)
+        $this->modules->get("FieldtypeComments");
         //All comments code thanks to Okeowo Aderemi
 
         //We are expecting an array of comments
