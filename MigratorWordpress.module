@@ -22,7 +22,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
     public static function getModuleInfo() {
         return array(
             'title' => 'Wordpress Migrator',
-            'version' => '2.1.1',
+            'version' => '2.1.2',
             'summary' => 'Add new Import Wordpress XML option to Migrator.',
             'requires' => 'ProcessMigrator',
             'filetype' => 'xml',
@@ -81,8 +81,6 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
         $this->addPages();
         $this->addTemplates();
         $this->addFields();
-
-
 
         // converts the array to json
         //return mb_convert_encoding(json_encode($this->getNew(), JSON_UNESCAPED_UNICODE), "HTML-ENTITIES", 'UTF-8');
@@ -848,7 +846,8 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
             'created_users_id'  => $this->getUserWithRole($post["post_author"]),
             'modified_users_id' => $this->getUserWithRole($post["post_author"]),
             'created'           => strtotime($post["post_date_gmt"].' GMT'),
-            'modified'          => strtotime($post["post_date_gmt"].' GMT'),
+            'modified'          => strtotime($post["post_modified_gmt"].' GMT'),
+            'published'          => strtotime($post["post_date_gmt"].' GMT'),
             'data'              => array()
         );
 
@@ -886,7 +885,8 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
             'created_users_id'  => $this->getUserWithRole($page["post_author"]),
             'modified_users_id' => $this->getUserWithRole($page["post_author"]),
             'created'           => strtotime($page["post_date_gmt"].' GMT'),
-            'modified'          => strtotime($page["post_date_gmt"].' GMT'),
+            'modified'          => strtotime($page["post_modified_gmt"].' GMT'),
+            'published'         => strtotime($page["post_date_gmt"].' GMT'),
             'data'              => array()
         );
 
@@ -945,7 +945,7 @@ class MigratorWordpress extends MigratorAbstract implements Module, Configurable
                 "id"=>$commentValues['comment_id'],
                 "status"=> $commentValues['comment_approved'],
                 "data"=> $commentValues['comment_content'],
-                "comment_date"=> strtotime($commentValues['comment_date']),
+                "comment_date"=> strtotime($commentValues['comment_date_gmt'].' GMT'),
                 "cite"=>$commentValues['comment_author'],
                 "email"=>$commentValues['comment_author_email'],
                 "ip"=>$commentValues['comment_author_IP'],
